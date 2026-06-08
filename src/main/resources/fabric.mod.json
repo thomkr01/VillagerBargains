@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "bargainvillage",
+  "version": "${version}",
+  "name": "BargainVillage",
+  "description": "A Fabric mod that guarantees villagers the cheapest possible trade prices, configurable per trade.",
+  "authors": ["Tommy"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.bargainvillage.BargainVillageMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": "*",
+    "minecraft": "26.1.2"
+  }
+}
