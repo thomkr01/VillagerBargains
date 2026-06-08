@@ -3,6 +3,7 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -20,13 +21,9 @@ import java.util.Optional;
  * When the mod is enabled, trades are forced to the official vanilla
  * MINIMUM value for every trade type:
  *
- *  - For normal trades: uses vanillaMin from TradeDefinition.
- *  - For librarian enchanted books: uses a per-enchantment, per-level
- *    minimum table where provided, falling back to Mojang's documented
- *    minimum formula based on level and treasure status.
- *
- * Keeping this as a dedicated class means price logic stays decoupled from
- * mixins and can be changed without touching villager injection code.
+ *  - For normal trades:          uses vanillaMin from TradeDefinition.
+ *  - For enchanted books:        uses per-enchantment/per-level override table,
+ *                                falling back to Mojang's formula.
  */
 public final class PriceResolver {
     private PriceResolver() {}
@@ -76,10 +73,10 @@ public final class PriceResolver {
         ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
 
         if (enchantments == null || enchantments.isEmpty()) {
-            return 5;
+            return 5; // Cheapest valid non-treasure L1 price.
         }
 
-        var entry  = enchantments.entrySet().iterator().next();
+        var entry = enchantments.entrySet().iterator().next();
         Holder<Enchantment> holder = entry.getKey();
         int level = Math.max(1, entry.getIntValue());
 
@@ -88,9 +85,10 @@ public final class PriceResolver {
         int override = getOverrideMinPrice(enchantId, level);
         int price;
         if (override > 0) {
+            // 1) Explicit per-enchant, per-level override wins.
             price = override;
         } else {
-            // Fallback formula: non-treasure = 3*level+2, treasure = 2*(3*level+2)
+            // 2) Fallback formula: non-treasure = 3*level+2, treasure doubles it.
             boolean isTreasure = holder.is(EnchantmentTags.TREASURE);
             price = 3 * level + 2;
             if (isTreasure) price *= 2;
@@ -102,20 +100,18 @@ public final class PriceResolver {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Gets the namespaced id string for an enchantment (e.g. "minecraft:mending").
+     * Gets the namespaced id string for an enchantment, e.g. "minecraft:mending".
      *
-     * In 26.1.x enchantments are a dynamic/datapack registry, so they have no
-     * entry in BuiltInRegistries. Instead we read the key directly from the
-     * Holder, which always carries it for any registered enchantment.
-     *
-     * holder.getKey() returns Optional<ResourceKey<Enchantment>>.
-     * ResourceKey.location() returns the ResourceLocation (namespaced id).
+     * Uses Holder.unwrapKey() which is the correct Mojang-mappings API for
+     * reading the ResourceKey from any Holder in 26.1.x (Mojang mappings).
+     * ResourceKey.location() returns the ResourceLocation (namespace:path).
      */
     private static String getEnchantmentId(Holder<Enchantment> holder) {
         if (holder == null) return "";
-        Optional<String> id = holder.getKey()
-                .map(key -> key.location().toString());
-        return id.orElse("");
+        Optional<ResourceKey<Enchantment>> keyOpt = holder.unwrapKey();
+        if (!keyOpt.isPresent()) return "";
+        ResourceKey<Enchantment> key = keyOpt.get();
+        return key.location().toString();
     }
 
     private static int getOverrideMinPrice(String enchantId, int level) {
