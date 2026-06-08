@@ -1,94 +1,84 @@
 # VillagerBargains
 
-A Fabric mod for **Minecraft 26.1.2** (Fabric Loader `0.19.3`) that guarantees villager trades
-at the cheapest possible (godroll) price. Configurable globally or per-trade via a JSON file.
+A Fabric mod for **Minecraft 26.1.2** that locks all villager trade prices to either the cheapest or most expensive vanilla value — no more RNG, no more reloading.
 
-## Features
+> Fabric Loader `0.19.3` · Java 21
 
-- **Default godroll** — all trades locked to their vanilla minimum price out of the box
-- **Per-trade overrides** — configure any individual trade independently
-- **Three price modes:** `MINIMUM`, `MAXIMUM`, `CUSTOM` (clamped to vanilla range)
-- **Modular architecture** — updating for a new MC version means editing one file (`VanillaTrades.java`)
-- **Zero disk writes** — overrides are injected as an in-memory server data pack at runtime
+## What it does
+
+Every time a villager generates trades, this mod intercepts and sets the emerald price to either the vanilla **minimum** (godroll) or vanilla **maximum** — your choice. No intermediate values, no surprises.
 
 ## Installation
 
 1. Install [Fabric Loader `0.19.3`](https://fabricmc.net/use/) for Minecraft `26.1.2`
 2. Drop the `.jar` from [Releases](../../releases) into your `mods/` folder
-3. Launch Minecraft—the config file is created automatically on first run
+3. Launch — the config file is created automatically on first run
 
 ## Configuration
 
-Config file path: `<game_dir>/config/villagerbargains.json`
-
-Default (godroll everything):
+Config file: `<game_dir>/config/villagerbargains.json`
 
 ```json
 {
-  "globalPriceMode": "MINIMUM",
-  "globalCustomPrice": 1,
-  "perTradePrices": {}
+  "globalPriceMode": "MINIMUM"
 }
 ```
 
-Override a specific trade:
+| Mode | Result |
+|------|--------|
+| `MINIMUM` | Cheapest possible price (godroll) — **default** |
+| `MAXIMUM` | Most expensive possible price |
 
-```json
-{
-  "globalPriceMode": "MINIMUM",
-  "globalCustomPrice": 1,
-  "perTradePrices": {
-    "minecraft:librarian/level_1/enchanted_book": {
-      "priceMode": "CUSTOM",
-      "customPrice": 8
-    },
-    "minecraft:armorer/level_4/diamond_leggings_sell": {
-      "priceMode": "MAXIMUM"
-    }
-  }
-}
-```
+That's it. Change the value and restart (or use `/reload`).
 
-### Price modes
+## Price reference
 
-| Mode | Description |
-|------|-------------|
-| `MINIMUM` | Vanilla minimum (godroll) — **default** |
-| `MAXIMUM` | Vanilla maximum |
-| `CUSTOM` | Your value, clamped to `[vanillaMin, vanillaMax]` |
+Prices follow the vanilla formula. Examples at **MINIMUM**:
+
+**Normal enchantments** — `2 + 3 × level` emeralds
+
+| Enchantment | I | II | III | IV | V |
+|---|---|---|---|---|---|
+| Protection | 5 🪙 | 8 🪙 | 11 🪙 | 14 🪙 | — |
+| Feather Falling | 5 🪙 | 8 🪙 | 11 🪙 | 14 🪙 | — |
+| Sharpness | 5 🪙 | 8 🪙 | 11 🪙 | 14 🪙 | 17 🪙 |
+| Efficiency | 5 🪙 | 8 🪙 | 11 🪙 | 14 🪙 | 17 🪙 |
+| Breach | 5 🪙 | 8 🪙 | 11 🪙 | 14 🪙 | — |
+| Unbreaking | 5 🪙 | 8 🪙 | 11 🪙 | — | — |
+
+**Treasure enchantments** — `(2 + 3 × level) × 2` emeralds
+
+| Enchantment | I | II | III |
+|---|---|---|---|
+| Mending | 10 🪙 | — | — |
+| Frost Walker | 10 🪙 | 16 🪙 | — |
+| Swift Sneak | 10 🪙 | 16 🪙 | 22 🪙 |
+| Soul Speed | 10 🪙 | 16 🪙 | 22 🪙 |
+| Wind Burst | 10 🪙 | 16 🪙 | 22 🪙 |
+| Infinity | 10 🪙 | — | — |
+
+## Updating for a new Minecraft version
+
+1. Open `VanillaTrades.java` — edit, add, or remove `register(...)` entries
+2. Bump `minecraft_version` in `gradle.properties`
+3. Build: `./gradlew build`
 
 ## Architecture
 
 ```
 src/main/java/com/villagerbargains/
-├── VillagerBargainsMod.java       ← Entrypoint
+├── VillagerBargainsMod.java          ← Entrypoint
 ├── config/
-│   └── VillagerBargainsConfig.java  ← JSON config loader/saver
+│   └── VillagerBargainsConfig.java   ← JSON config (globalPriceMode)
 ├── trade/
-│   ├── VanillaTrades.java           ← ⚠️ Only file to edit for MC version updates
-│   ├── TradeDefinition.java         ← Immutable record: tradeId + min + max + clamp
-│   ├── PriceResolver.java           ← Config + definition → final price
-│   └── TradeJsonBuilder.java        ← Produces constant-count JSON fragment
+│   ├── VanillaTrades.java            ← ⚠️ Only file to edit for MC version updates
+│   ├── TradeDefinition.java          ← Immutable record: tradeId + min + max
+│   └── PriceResolver.java            ← Config + definition → final price
 ├── resource/
-│   ├── GodRollResourcePack.java     ← Builds the full map of override JSONs
-│   └── InMemoryPack.java            ← Serves bytes as a PackResources at runtime
+│   ├── GodRollResourcePack.java      ← Builds override JSON map
+│   └── InMemoryPack.java             ← Serves bytes as PackResources at runtime
 └── util/
-    └── ModLogger.java               ← Shared SLF4J logger
-```
-
-## Updating for a new Minecraft version
-
-1. Open `VanillaTrades.java` — edit, add, or remove `register(...)` entries
-2. Bump `minecraft_version` (and optionally `loader_version` / `mod_version`) in `gradle.properties`
-3. Open a PR from `feature/mc-X.Y.Z-update` → `develop` → CI runs → merge when green
-
-## Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow and file responsibilities.
-
-```bash
-./gradlew build   # compile + package
-./gradlew jar     # jar only
+    └── ModLogger.java                ← Shared SLF4J logger
 ```
 
 ## License
