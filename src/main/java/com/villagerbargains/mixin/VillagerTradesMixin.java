@@ -11,36 +11,31 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
+import net.minecraft.world.item.trading.Merchant;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into the concrete Villager#updateTrades(ServerLevel).
+ * Injects at TAIL of the concrete Villager#updateTrades(ServerLevel).
  *
- * AbstractVillager#updateTrades is abstract (no body = no RETURN to inject at).
- * The real implementation with a RETURN lives on the concrete Villager class.
- *
- * The `offers` field is inherited from AbstractVillager but is accessible
- * via @Shadow on the concrete subclass target.
- *
- * Both classes are in npc.villager.* in MC 26.1.x - we use targets strings
- * so javac never needs them on the compile classpath.
+ * We avoid @Shadow entirely (no refMap needed) by accessing offers through
+ * the Merchant interface that Villager already implements: getOffers().
+ * This is zero-overhead — getOffers() returns the existing MerchantOffers
+ * list directly, no allocation.
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
 
-    // Inherited from AbstractVillager - @Shadow resolves inherited fields fine.
-    @Shadow protected MerchantOffers offers;
-
     @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
-        if (this.offers == null || this.offers.isEmpty()) return;
+        // Cast through Merchant interface - Villager implements it, no @Shadow needed.
+        MerchantOffers offers = ((Merchant)(Object)this).getOffers();
+        if (offers == null || offers.isEmpty()) return;
 
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        for (MerchantOffer offer : this.offers) {
+        for (MerchantOffer offer : offers) {
             applyPrice(offer, config);
         }
     }
@@ -63,7 +58,7 @@ public abstract class VillagerTradesMixin {
     }
 
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        // Step 1: enchanted book — match by sell enchantment ID
+        // Enchanted book trade: match by enchantment ID on the result item.
         ItemStack result = offer.getResult();
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
@@ -80,7 +75,7 @@ public abstract class VillagerTradesMixin {
             }
         }
 
-        // Step 2: all other trades — match by buy item name
+        // All other trades: match by the cost item name.
         String itemId   = offer.getBaseCostA().getItem().toString();
         int colon       = itemId.lastIndexOf(':');
         String itemName = colon >= 0 ? itemId.substring(colon + 1) : itemId;
