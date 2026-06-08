@@ -28,12 +28,14 @@ public abstract class VillagerTradesMixin extends Entity {
         super(type, level);
     }
 
+    // Prefix used in all log messages from this mod.
+    private static final String LOG_TAG = "[Pricing]";
+
     private boolean villagerbargains$applied = false;
 
     /** Fires when a villager generates new trades (level-up or fresh spawn). */
     @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
-        // updateTrades only fires server-side, no guard needed.
         villagerbargains$applied = false;
         reapplyAllOffers();
         villagerbargains$applied = true;
@@ -49,9 +51,8 @@ public abstract class VillagerTradesMixin extends Entity {
     @Inject(method = "tick()V", at = @At("HEAD"), require = 0)
     private void villagerbargains$onTick(CallbackInfo ci) {
         if (!villagerbargains$applied) {
-            // Guard: only run on the server side.
             if (this.level().isClientSide()) {
-                villagerbargains$applied = true; // don't retry on client
+                villagerbargains$applied = true;
                 return;
             }
             reapplyAllOffers();
@@ -126,11 +127,12 @@ public abstract class VillagerTradesMixin extends Entity {
             ItemEnchantments enc = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enc != null && !enc.isEmpty()) {
                 var e = enc.entrySet().iterator().next();
-                ModLogger.get().info("[VB] book {} lvl{}: {} -> {}",
-                        e.getKey().getRegisteredName(), e.getValue(), from, to);
+                ModLogger.get().info("{} Book '{}' lvl {} repriced: {} -> {} emeralds",
+                        LOG_TAG, e.getKey().getRegisteredName(), e.getValue(), from, to);
                 return;
             }
         }
-        ModLogger.get().info("[VB] trade {}: {} -> {}", itemPath(result), from, to);
+        ModLogger.get().info("{} Trade '{}' repriced: {} -> {} emeralds",
+                LOG_TAG, itemPath(result), from, to);
     }
 }
