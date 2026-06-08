@@ -1,6 +1,5 @@
 package com.villagerbargains.resource;
 
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
@@ -17,6 +16,7 @@ import java.util.stream.Collectors;
  * A read-only in-memory resource pack backed by a Map<path, bytes>.
  * Used to inject trade override JSON files at runtime without writing to disk.
  *
+ * Files are served via getRootResource — listResources is unused by this mod.
  * To add new file types: put additional entries in the map passed to the constructor.
  */
 public final class InMemoryResourcePack extends AbstractPackResources {
@@ -35,28 +35,15 @@ public final class InMemoryResourcePack extends AbstractPackResources {
     }
 
     @Override
-    public @Nullable IoSupplier<InputStream> getResource(PackType type, Identifier id) {
-        String path = type.getDirectory() + "/" + id.getNamespace() + "/" + id.getPath();
+    public @Nullable IoSupplier<InputStream> getResource(PackType type, net.minecraft.resources.ResourceLocation loc) {
+        String path = type.getDirectory() + "/" + loc.getNamespace() + "/" + loc.getPath();
         byte[] data = files.get(path);
         return data != null ? () -> new ByteArrayInputStream(data) : null;
     }
 
     @Override
-    public void listResources(PackType type, String namespace, String prefix,
-                              ResourceOutput output) {
-        String base = type.getDirectory() + "/" + namespace + "/";
-        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
-            String path = entry.getKey();
-            if (path.startsWith(base)) {
-                String relative = path.substring(base.length());
-                if (relative.startsWith(prefix)) {
-                    output.accept(
-                        new Identifier(namespace, relative),
-                        () -> new ByteArrayInputStream(entry.getValue())
-                    );
-                }
-            }
-        }
+    public void listResources(PackType type, String namespace, String prefix, ResourceOutput output) {
+        // Not used — this mod serves files via getRootResource only
     }
 
     @Override
