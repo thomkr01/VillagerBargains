@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
@@ -53,11 +54,10 @@ public abstract class VillagerTradesMixin {
         ItemStack firstBuy = offer.getBaseCostA();
         if (firstBuy.isEmpty()) return;
 
-        String itemId = firstBuy.getItem().toString();
-        TradeDefinition def = findDefinitionByItem(itemId);
+        TradeDefinition def = findDefinitionForOffer(offer, firstBuy);
         if (def == null) return;
 
-        int desiredPrice = PriceResolver.resolve(def, config);
+        int desiredPrice = PriceResolver.resolve(offer, def, config);
         if (desiredPrice < 0) return; // mod disabled
 
         int currentCount = firstBuy.getCount();
@@ -65,6 +65,23 @@ public abstract class VillagerTradesMixin {
             firstBuy.setCount(desiredPrice);
             ModLogger.get().debug("[VillagerBargains] {} : {} → {}", def.tradeId(), currentCount, desiredPrice);
         }
+    }
+
+    /**
+     * Chooses the best TradeDefinition for a given offer.
+     *
+     *  - For normal trades we match by the first buy item (emeralds, crops,
+     *    etc.) using findDefinitionByItem.
+     *  - For enchanted books, the first buy item is always emeralds, so we
+     *    instead match by the trade id suffix "enchanted_book".
+     */
+    private static TradeDefinition findDefinitionForOffer(MerchantOffer offer, ItemStack firstBuy) {
+        if (offer.getResult().is(Items.ENCHANTED_BOOK)) {
+            return findDefinitionByTradeSuffix("enchanted_book");
+        }
+
+        String itemId = firstBuy.getItem().toString();
+        return findDefinitionByItem(itemId);
     }
 
     /**
@@ -83,6 +100,25 @@ public abstract class VillagerTradesMixin {
             if (lastSlash >= 0) {
                 String tradeName = tradeId.substring(lastSlash + 1);
                 if (tradeName.contains(itemName) || tradeName.equals(itemName + "_buy") || tradeName.equals(itemName + "_sell")) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Looks up a TradeDefinition whose trade id ends with the given suffix,
+     * e.g. "/enchanted_book". Used for all enchanted-book librarian trades
+     * where the first buy item (emerald) is not specific enough.
+     */
+    private static TradeDefinition findDefinitionByTradeSuffix(String suffix) {
+        for (Map.Entry<String, TradeDefinition> entry : VanillaTrades.getAll().entrySet()) {
+            String tradeId = entry.getKey();
+            int lastSlash = tradeId.lastIndexOf('/');
+            if (lastSlash >= 0) {
+                String tradeName = tradeId.substring(lastSlash + 1);
+                if (tradeName.equals(suffix)) {
                     return entry.getValue();
                 }
             }
