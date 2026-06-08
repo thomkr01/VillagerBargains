@@ -20,10 +20,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Injects at TAIL of Villager#updateTrades(ServerLevel).
  *
- * No ResourceLocation or BuiltInRegistries needed.
- * Item name: Item.toString() returns "minecraft:iron_leggings" — take substring after ':'.
- * Enchantment ID: ResourceKey.toString() returns "ResourceKey[... / minecraft:power]"
- *   — we take everything after the last ' / ' and strip the trailing ']'.
+ * Enchantment ID: Holder.getRegisteredName() returns "minecraft:power" directly.
+ * Item path:      Item.toString()             returns "minecraft:iron_leggings".
+ * No ResourceLocation, no BuiltInRegistries, no string format parsing.
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
@@ -54,45 +53,28 @@ public abstract class VillagerTradesMixin {
         }
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
     /**
-     * Item.toString() returns the registry ID, e.g. "minecraft:iron_leggings".
-     * We only need the path after ':', so: "iron_leggings".
+     * Item.toString() = "minecraft:iron_leggings" — take everything after last ':'.
      */
     private static String itemPath(ItemStack stack) {
-        String s = stack.getItem().toString(); // "minecraft:iron_leggings"
-        int colon = s.lastIndexOf(':');
-        return colon >= 0 ? s.substring(colon + 1) : s;
-    }
-
-    /**
-     * Extracts the enchantment registry ID from a ResourceKey toString().
-     * ResourceKey.toString() = "ResourceKey[minecraft:enchantment / minecraft:power]"
-     * We want: "minecraft:power"
-     */
-    private static String enchantmentId(Object resourceKey) {
-        String s = resourceKey.toString();
-        int sep = s.lastIndexOf(" / ");
-        if (sep < 0) return s;
-        String after = s.substring(sep + 3); // "minecraft:power]"
-        if (after.endsWith("]")) after = after.substring(0, after.length() - 1);
-        return after; // "minecraft:power"
+        String s = stack.getItem().toString();
+        int i = s.lastIndexOf(':');
+        return i >= 0 ? s.substring(i + 1) : s;
     }
 
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book — match by enchantment ID.
+        // 1. Enchanted book — use Holder.getRegisteredName() for a clean "namespace:path" string.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var enchEntry = enchantments.entrySet().iterator().next();
-                var keyOpt = enchEntry.getKey().unwrapKey();
-                if (keyOpt.isPresent()) {
-                    String enchId = enchantmentId(keyOpt.get()); // "minecraft:power"
-                    return VanillaTrades.getByBook("enchanted_book:" + enchId);
-                }
+                // getRegisteredName() returns e.g. "minecraft:power" — exactly what we need.
+                String enchId = enchantments.entrySet().iterator().next()
+                        .getKey().getRegisteredName();
+                return VanillaTrades.getByBook("enchanted_book:" + enchId);
             }
             return null;
         }
