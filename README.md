@@ -1,27 +1,37 @@
-# BargainVillage
+# VillagerBargains
 
-A Fabric mod for **Minecraft 26.1.2** that guarantees villager trades at the cheapest (godroll) price. Configurable per-trade via a JSON config file.
-
-## Why this name?
-
-**BargainVillage** is short, memorable, and directly signals a village full of great deals.
+A Fabric mod for **Minecraft 26.1.2** (Fabric Loader `0.19.3`) that guarantees villager trades
+at the cheapest possible (godroll) price. Configurable globally or per-trade via a JSON file.
 
 ## Features
 
-- Global or per-trade pricing rules
-- Default mode is `MINIMUM` (godroll)
-- `CUSTOM` prices are clamped to the base game's min/max for each trade
-- Modular architecture designed for easy Minecraft version updates
+- **Default godroll** — all trades locked to their vanilla minimum price out of the box
+- **Per-trade overrides** — configure any individual trade independently
+- **Three price modes:** `MINIMUM`, `MAXIMUM`, `CUSTOM` (clamped to vanilla range)
+- **Modular architecture** — updating for a new MC version means editing one file (`VanillaTrades.java`)
+- **Zero disk writes** — overrides are injected as an in-memory server data pack at runtime
 
-## Config
+## Installation
 
-Generated on first run at:
+1. Install [Fabric Loader `0.19.3`](https://fabricmc.net/use/) for Minecraft `26.1.2`
+2. Drop the `.jar` from [Releases](../../releases) into your `mods/` folder
+3. Launch Minecraft—the config file is created automatically on first run
 
-```text
-<game_dir>/config/bargainvillage.json
+## Configuration
+
+Config file path: `<game_dir>/config/villagerbargains.json`
+
+Default (godroll everything):
+
+```json
+{
+  "globalPriceMode": "MINIMUM",
+  "globalCustomPrice": 1,
+  "perTradePrices": {}
+}
 ```
 
-Example:
+Override a specific trade:
 
 ```json
 {
@@ -31,18 +41,56 @@ Example:
     "minecraft:librarian/level_1/enchanted_book": {
       "priceMode": "CUSTOM",
       "customPrice": 8
+    },
+    "minecraft:armorer/level_4/diamond_leggings_sell": {
+      "priceMode": "MAXIMUM"
     }
   }
 }
 ```
 
+### Price modes
+
+| Mode | Description |
+|------|-------------|
+| `MINIMUM` | Vanilla minimum (godroll) — **default** |
+| `MAXIMUM` | Vanilla maximum |
+| `CUSTOM` | Your value, clamped to `[vanillaMin, vanillaMax]` |
+
 ## Architecture
 
-- `config/` → config loading and saving
-- `trade/` → vanilla bounds, clamping, price resolution, JSON building
-- `resource/` → runtime in-memory resource-pack overrides
-- `util/` → shared utilities
+```
+src/main/java/com/villagerbargains/
+├── VillagerBargainsMod.java       ← Entrypoint
+├── config/
+│   └── VillagerBargainsConfig.java  ← JSON config loader/saver
+├── trade/
+│   ├── VanillaTrades.java           ← ⚠️ Only file to edit for MC version updates
+│   ├── TradeDefinition.java         ← Immutable record: tradeId + min + max + clamp
+│   ├── PriceResolver.java           ← Config + definition → final price
+│   └── TradeJsonBuilder.java        ← Produces constant-count JSON fragment
+├── resource/
+│   ├── GodRollResourcePack.java     ← Builds the full map of override JSONs
+│   └── InMemoryPack.java            ← Serves bytes as a PackResources at runtime
+└── util/
+    └── ModLogger.java               ← Shared SLF4J logger
+```
 
-## Notes
+## Updating for a new Minecraft version
 
-Minecraft 26.1 villager trades are data-driven, so this mod works by overriding generated `villager_trade` JSON at runtime.
+1. Open `VanillaTrades.java` — edit, add, or remove `register(...)` entries
+2. Bump `minecraft_version` (and optionally `loader_version` / `mod_version`) in `gradle.properties`
+3. Open a PR from `feature/mc-X.Y.Z-update` → `develop` → CI runs → merge when green
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch workflow and file responsibilities.
+
+```bash
+./gradlew build   # compile + package
+./gradlew jar     # jar only
+```
+
+## License
+
+[MIT](LICENSE)
