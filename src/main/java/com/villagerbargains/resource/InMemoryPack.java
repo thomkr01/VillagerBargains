@@ -4,36 +4,41 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
 import net.minecraft.server.packs.resources.IoSupplier;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.*;
 
 /**
  * A read-only PackResources backed entirely by an in-memory byte map.
- * This avoids writing anything to disk and keeps startup fast.
+ * Avoids disk I/O; all trade override JSONs live in RAM.
+ *
+ * To update for a new MC version: only the PackResources interface methods
+ * need checking if Mojang changes signatures.
  */
 public final class InMemoryPack extends AbstractPackResources {
-    /** key: "data/<namespace>/<path>" → raw JSON bytes */
+
+    /** key format: "data/<namespace>/<path>" -> raw JSON bytes */
     private final Map<String, byte[]> files;
 
     public InMemoryPack(PackLocationInfo locationInfo, Map<String, byte[]> files) {
         super(locationInfo);
-        this.files = Map.copyOf(files); // defensive copy
+        this.files = Map.copyOf(files);
     }
 
     @Nullable
     @Override
-    public IoSupplier<InputStream> getRootResource(String... path) { return null; }
+    public IoSupplier<InputStream> getRootResource(String... path) {
+        return null;
+    }
 
     @Nullable
     @Override
     public IoSupplier<InputStream> getResource(PackType type, ResourceLocation location) {
         if (type != PackType.SERVER_DATA) return null;
-        String key  = "data/" + location.getNamespace() + "/" + location.getPath();
+        String key = "data/" + location.getNamespace() + "/" + location.getPath();
         byte[] data = files.get(key);
         if (data == null) return null;
         byte[] copy = data.clone();
@@ -43,10 +48,11 @@ public final class InMemoryPack extends AbstractPackResources {
     @Override
     public void listResources(PackType type, String namespace, String prefix, ResourceOutput output) {
         if (type != PackType.SERVER_DATA) return;
-        String keyPrefix = "data/" + namespace + "/" + prefix;
+        String nsPrefix = "data/" + namespace + "/";
+        String fullPrefix = nsPrefix + prefix;
         for (Map.Entry<String, byte[]> entry : files.entrySet()) {
-            if (!entry.getKey().startsWith(keyPrefix)) continue;
-            String rest = entry.getKey().substring(("data/" + namespace + "/").length());
+            if (!entry.getKey().startsWith(fullPrefix)) continue;
+            String rest = entry.getKey().substring(nsPrefix.length());
             ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(namespace, rest);
             byte[] copy = entry.getValue().clone();
             output.accept(loc, () -> new ByteArrayInputStream(copy));
@@ -63,10 +69,6 @@ public final class InMemoryPack extends AbstractPackResources {
         }
         return Collections.unmodifiableSet(ns);
     }
-
-    @Nullable
-    @Override
-    public <T> T getMetadataSection(MetadataSectionSerializer<T> deserializer) { return null; }
 
     @Override
     public void close() {}
