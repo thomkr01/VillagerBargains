@@ -1,27 +1,25 @@
 package com.villagerbargains;
 
 import com.villagerbargains.config.VillagerBargainsConfig;
-import com.villagerbargains.resource.GodRollResourcePack;
-import com.villagerbargains.resource.InMemoryPack;
 import com.villagerbargains.util.ModLogger;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.packs.PackLocationInfo;
-import net.minecraft.server.packs.PackSelectionConfig;
-import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.repository.Pack;
-import net.minecraft.server.packs.repository.PackSource;
-
-import java.util.Map;
-import java.util.Optional;
 
 /**
- * Mod entrypoint. Wires config -> trade overrides -> in-memory data pack.
+ * Mod entrypoint.
  *
- * NOTE for MC version updates:
- *   - Pack.readMetaAndCreate signature may change; verify against Mojang mappings.
- *   - PackSelectionConfig(alwaysEnabled, position, fixedPosition)
+ * Trade price overrides are pre-generated at build time by the Gradle
+ * `generateTradeResources` task and bundled as static data files inside
+ * the mod jar under data/minecraft/villager_trade/...
+ *
+ * Fabric loads those files automatically as part of the mod’s built-in
+ * data pack — no runtime pack injection or ServerLifecycleEvents needed.
+ *
+ * The only work done here is:
+ *   1. Loading / creating the config file so it exists on first launch.
+ *   2. Logging the active price mode for diagnostics.
+ *
+ * To update trade ranges for a new MC version: edit VanillaTrades.java,
+ * then re-run `./gradlew generateTradeResources build`.
  */
 public final class VillagerBargainsMod implements ModInitializer {
 
@@ -30,54 +28,11 @@ public final class VillagerBargainsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        ModLogger.get().info("[VillagerBargains] Config loaded. Global price mode: {}",
+        ModLogger.get().info(
+                "[VillagerBargains] Loaded. Global price mode: {}",
                 config.globalPriceMode);
-
-        Map<String, byte[]> overrides = GodRollResourcePack.buildAllOverrides();
-        ModLogger.get().info("[VillagerBargains] Generated {} trade price override(s).",
-                overrides.size());
-
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-
-            PackLocationInfo locationInfo = new PackLocationInfo(
-                    MOD_ID + "_overrides",
-                    Component.literal("VillagerBargains Trade Overrides"),
-                    PackSource.BUILT_IN,
-                    Optional.empty()
-            );
-
-            // ResourcesSupplier has two abstract methods in MC 26.x - cannot use a lambda.
-            Pack.ResourcesSupplier supplier = new Pack.ResourcesSupplier() {
-                @Override
-                public net.minecraft.server.packs.PackResources openPrimary(
-                        PackLocationInfo info) {
-                    return new InMemoryPack(info, overrides);
-                }
-
-                @Override
-                public net.minecraft.server.packs.PackResources openFull(
-                        PackLocationInfo info, Pack.Metadata metadata) {
-                    return new InMemoryPack(info, overrides);
-                }
-            };
-
-            PackSelectionConfig selectionConfig =
-                    new PackSelectionConfig(true, Pack.Position.TOP, false);
-
-            // In MC 26.x Pack.readMetaAndCreate returns Pack directly (not Optional).
-            Pack pack = Pack.readMetaAndCreate(
-                    locationInfo, supplier, PackType.SERVER_DATA, selectionConfig);
-
-            if (pack == null) {
-                ModLogger.get().error(
-                        "[VillagerBargains] Failed to create override pack " +
-                        "(readMetaAndCreate returned null). Trade prices will be vanilla.");
-                return;
-            }
-
-            // addPack signature in MC 26.x: addPack(String id, Supplier<Pack>)
-            server.getPackRepository().addPack(MOD_ID + "_overrides", () -> pack);
-            ModLogger.get().info("[VillagerBargains] Trade override pack injected.");
-        });
+        ModLogger.get().info(
+                "[VillagerBargains] Trade overrides are bundled as static data files. "
+                + "Re-run generateTradeResources + build to apply config changes.");
     }
 }
