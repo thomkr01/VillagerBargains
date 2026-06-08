@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -20,13 +21,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Injects at TAIL of Villager#updateTrades(ServerLevel).
  *
- * Matching strategy (no profession needed):
- *   1. Enchanted book → match by enchantment ID on result item (BOOK_REGISTRY)
- *   2. All other trades → match by result item name (RESULT_REGISTRY)
- *      - Sell trades: result is the unique sold item (e.g. iron_leggings)
- *      - Buy trades:  result is emerald, so we fall back to the buy item name
- *
- * All lookups are O(1) HashMap gets — no iteration over the registry.
+ * Matching strategy (no profession needed, all O(1)):
+ *   1. Enchanted book -> match by enchantment ResourceLocation (namespace:path)
+ *   2. Sell trades    -> match by result item name via RESULT_REGISTRY
+ *   3. Buy trades     -> match by cost item name via RESULT_REGISTRY
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
@@ -60,36 +58,39 @@ public abstract class VillagerTradesMixin {
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book: match by enchantment ID.
+        // 1. Enchanted book: use ResourceLocation directly — no string parsing.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
-                    String keyStr = keyOpt.get().toString();
-                    int sep = keyStr.lastIndexOf(" / ");
-                    String enchId = sep >= 0 ? keyStr.substring(sep + 3, keyStr.length() - 1) : keyStr;
+                    // location() gives us a ResourceLocation — toString() is "namespace:path"
+                    // exactly matching our registry key format "enchanted_book:minecraft:power"
+                    ResourceLocation loc = keyOpt.get().location();
+                    String enchId = loc.getNamespace() + ":" + loc.getPath();
                     return VanillaTrades.getByBook("enchanted_book:" + enchId);
                 }
             }
             return null;
         }
 
-        // 2. Try result item name first (covers all sell trades uniquely).
+        // 2. Sell trade: result is the unique item the player receives.
         if (!result.isEmpty()) {
-            String resultId = result.getItem().toString();
-            String resultName = resultId.substring(resultId.lastIndexOf(':') + 1);
-            TradeDefinition def = VanillaTrades.getByResultItem(resultName);
-            if (def != null) return def;
+            ResourceLocation loc = result.getItem().arch$registryName();
+            if (loc != null) {
+                TradeDefinition def = VanillaTrades.getByResultItem(loc.getPath());
+                if (def != null) return def;
+            }
         }
 
-        // 3. Fall back to buy item name (for pure buy trades where result is emerald).
+        // 3. Buy trade: result is emerald, match by cost item instead.
         ItemStack costA = offer.getBaseCostA();
         if (!costA.isEmpty()) {
-            String costId = costA.getItem().toString();
-            String costName = costId.substring(costId.lastIndexOf(':') + 1);
-            return VanillaTrades.getByResultItem(costName);
+            ResourceLocation loc = costA.getItem().arch$registryName();
+            if (loc != null) {
+                return VanillaTrades.getByResultItem(loc.getPath());
+            }
         }
 
         return null;
