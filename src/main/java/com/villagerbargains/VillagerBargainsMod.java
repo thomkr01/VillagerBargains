@@ -25,7 +25,7 @@ public final class VillagerBargainsMod implements ModInitializer {
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
         ModLogger.get().info(
-                "[VillagerBargains] Loaded. Global price mode: {}",
-                config.globalPriceMode);
+                "[VillagerBargains] Loaded. Enabled: {}, pricing: MINIMUM_ONLY",
+                config.enabled);
     }
 }
