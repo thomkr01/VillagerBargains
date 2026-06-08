@@ -6,11 +6,11 @@ import com.villagerbargains.resource.InMemoryPack;
 import com.villagerbargains.util.ModLogger;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
-import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +18,9 @@ import java.util.Optional;
 
 public final class VillagerBargainsMod implements ModInitializer {
     public static final String MOD_ID = "villagerbargains";
+
+    // Pack format version for MC 26.1.x data packs
+    private static final int DATA_PACK_FORMAT = 61;
 
     @Override
     public void onInitialize() {
@@ -53,8 +56,8 @@ public final class VillagerBargainsMod implements ModInitializer {
                     },
                     new Pack.Metadata(
                         Component.literal("VillagerBargains trade price overrides"),
-                        net.minecraft.server.packs.PackCompatibility.COMPATIBLE,
-                        net.minecraft.server.packs.FeatureFlagSet.of(),
+                        DATA_PACK_FORMAT,
+                        List.of(),
                         List.of()
                     ),
                     new PackSelectionConfig(true, Pack.Position.TOP, true)
