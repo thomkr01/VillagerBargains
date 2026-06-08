@@ -20,8 +20,8 @@ import java.util.Optional;
  * Mod entrypoint. Wires config -> trade overrides -> in-memory data pack.
  *
  * NOTE for MC version updates:
- *   - Pack.readMetaAndCreate signature lives here; update if MC changes it.
- *   - PackSelectionConfig(enabled, position, fixed) - adjust as needed.
+ *   - Pack.readMetaAndCreate signature may change; verify against Mojang mappings.
+ *   - PackSelectionConfig(alwaysEnabled, position, fixedPosition)
  */
 public final class VillagerBargainsMod implements ModInitializer {
 
@@ -33,7 +33,6 @@ public final class VillagerBargainsMod implements ModInitializer {
         ModLogger.get().info("[VillagerBargains] Config loaded. Global price mode: {}",
                 config.globalPriceMode);
 
-        // Build all override JSONs once at startup - cheap, pure in-memory.
         Map<String, byte[]> overrides = GodRollResourcePack.buildAllOverrides();
         ModLogger.get().info("[VillagerBargains] Generated {} trade price override(s).",
                 overrides.size());
@@ -62,25 +61,23 @@ public final class VillagerBargainsMod implements ModInitializer {
                 }
             };
 
-            // PackSelectionConfig(alwaysEnabled, position, fixedPosition)
             PackSelectionConfig selectionConfig =
                     new PackSelectionConfig(true, Pack.Position.TOP, false);
 
-            // readMetaAndCreate reads pack.mcmeta from the supplier and returns
-            // Optional.empty() only if the pack metadata is unreadable.
-            Optional<Pack> pack = Pack.readMetaAndCreate(
+            // In MC 26.x Pack.readMetaAndCreate returns Pack directly (not Optional).
+            Pack pack = Pack.readMetaAndCreate(
                     locationInfo, supplier, PackType.SERVER_DATA, selectionConfig);
 
-            pack.ifPresentOrElse(
-                    p -> {
-                        server.getPackRepository().addPack(p);
-                        ModLogger.get().info(
-                                "[VillagerBargains] Trade override pack injected.");
-                    },
-                    () -> ModLogger.get().error(
-                            "[VillagerBargains] Failed to create override pack - " +
-                            "readMetaAndCreate returned empty. Check pack metadata.")
-            );
+            if (pack == null) {
+                ModLogger.get().error(
+                        "[VillagerBargains] Failed to create override pack " +
+                        "(readMetaAndCreate returned null). Trade prices will be vanilla.");
+                return;
+            }
+
+            // addPack signature in MC 26.x: addPack(String id, Supplier<Pack>)
+            server.getPackRepository().addPack(MOD_ID + "_overrides", () -> pack);
+            ModLogger.get().info("[VillagerBargains] Trade override pack injected.");
         });
     }
 }
