@@ -14,13 +14,12 @@ import java.nio.file.Path;
 /**
  * Loads and saves config from config/villagerbargains.json.
  *
- * CURRENTLY SUPER SIMPLE:
- *  - Only one global toggle: enabled (true/false).
- *  - When enabled, all known trades roll at their vanilla minimum price.
+ * Two simple options:
+ *  - enabled: true/false toggle.
+ *  - priceMode: MINIMUM (cheapest possible) or MAXIMUM (most expensive possible).
  *
- * This keeps the mod tiny and modular. If we ever add per-trade or
- * multi-mode config back, we only need to extend this class and the
- * PriceResolver.
+ * This keeps the mod tiny and modular. Extend this class and PriceResolver
+ * if more modes are needed in the future.
  */
 public final class VillagerBargainsConfig {
     private static final String CONFIG_FILE_NAME = "villagerbargains.json";
@@ -32,17 +31,26 @@ public final class VillagerBargainsConfig {
         return instance;
     }
 
-    // ── Config Fields ──────────────────────────────────────────────────────────
+    // ── Price Mode ─────────────────────────────────────────────────────────────
 
-    /**
-     * When true, all known villager trades are forced to their vanilla
-     * minimum emerald cost (godroll). When false, the mod is effectively
-     * disabled and prices remain vanilla.
-     */
+    public enum PriceMode {
+        /** Force all trades to their cheapest possible vanilla price. */
+        MINIMUM,
+        /** Force all trades to their most expensive possible vanilla price. */
+        MAXIMUM
+    }
+
+    // ── Config Fields ────────────────────────────────────────────────────────
+
+    /** When false, the mod is effectively disabled and prices remain vanilla. */
     @SerializedName("enabled")
     public boolean enabled = true;
 
-    // ── I/O ────────────────────────────────────────────────────────────────────
+    /** Whether to force trades to their MINIMUM or MAXIMUM vanilla price. */
+    @SerializedName("price_mode")
+    public PriceMode priceMode = PriceMode.MINIMUM;
+
+    // ── I/O ─────────────────────────────────────────────────────────────────
 
     private static Path configPath() {
         return FabricLoader.getInstance().getConfigDir().resolve(CONFIG_FILE_NAME);
