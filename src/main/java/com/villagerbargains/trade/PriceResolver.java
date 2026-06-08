@@ -3,6 +3,7 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -105,9 +106,7 @@ public final class PriceResolver {
         Holder<Enchantment> holder = entry.getKey();
         int level = Math.max(1, entry.getIntValue());
 
-        String enchantId = holder.unwrapKey()
-                .map(key -> key.location().toString())
-                .orElse("");
+        String enchantId = getEnchantmentId(holder);
 
         // 1) Try explicit per‑enchant, per‑level override.
         int override = getOverrideMinPrice(enchantId, level);
@@ -125,6 +124,24 @@ public final class PriceResolver {
 
         // Clamp to the valid emerald trade range.
         return Math.max(1, Math.min(64, price));
+    }
+
+    private static String getEnchantmentId(Holder<Enchantment> holder) {
+        if (holder == null) return "";
+
+        // Most common case: direct reference with a registry name.
+        if (holder.value() != null && holder.value().builtInRegistryHolder() != null) {
+            ResourceLocation id = holder.value().builtInRegistryHolder().key().location();
+            if (id != null) {
+                return id.toString();
+            }
+        }
+
+        // Fallback: use the holder's key string, which contains the id.
+        return holder.unwrapKey()
+                .map(key -> key.location())
+                .map(ResourceLocation::toString)
+                .orElse("");
     }
 
     private static int getOverrideMinPrice(String enchantId, int level) {
