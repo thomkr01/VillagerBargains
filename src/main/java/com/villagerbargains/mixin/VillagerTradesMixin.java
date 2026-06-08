@@ -6,7 +6,6 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -19,17 +18,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into Villager#updateTrades and sets each offer's emerald cost
- * to MINIMUM or MAXIMUM per config.
+ * Hooks into Villager#updateTrades.
  *
- * Matching strategy:
- *  1. Sell item is enchanted_book -> look up by enchantment ID (BOOK_REGISTRY)
- *  2. All other trades            -> look up by buy item name  (REGISTRY)
- *
- * To support new trades: edit VanillaTrades.
- * To change price logic: edit PriceResolver.
+ * We use targets string (not Villager.class) because without mappings
+ * the Villager class is not on the compile classpath.
+ * "net.minecraft.world.entity.npc.Villager" is the correct Mojang
+ * runtime name for MC 26.1+.
  */
-@Mixin(Villager.class)
+@Mixin(targets = "net.minecraft.world.entity.npc.Villager")
 public abstract class VillagerTradesMixin {
 
     @Shadow public abstract MerchantOffers getOffers();
@@ -69,7 +65,6 @@ public abstract class VillagerTradesMixin {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
-                // ResourceKey.toString() => "ResourceKey[minecraft:enchantment / minecraft:mending]"
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
                     String keyStr = keyOpt.get().toString();
