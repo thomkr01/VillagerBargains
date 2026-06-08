@@ -32,7 +32,32 @@ public abstract class VillagerTradesMixin {
     }
 
     private static void applyPrice(MerchantOffer offer, VillagerBargainsConfig config) {
-        TradeDefinition def = resolveDefinition(offer);
+        ItemStack result = offer.getResult();
+
+        // Enchanted book: resolve with level-aware formula.
+        if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
+            ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
+            if (enchantments != null && !enchantments.isEmpty()) {
+                var entry = enchantments.entrySet().iterator().next();
+                String enchId  = entry.getKey().getRegisteredName(); // "minecraft:power"
+                int    level   = entry.getValue();                    // 1..5
+                String sellKey = "enchanted_book:" + enchId;
+
+                int desired = PriceResolver.resolveBook(sellKey, level);
+                if (desired < 0) return;
+
+                ItemStack costA = offer.getBaseCostA();
+                int current = costA.getCount();
+                if (current != desired) {
+                    costA.setCount(desired);
+                    ModLogger.get().info("[VB] book {} lvl{}: {} -> {}", enchId, level, current, desired);
+                }
+            }
+            return;
+        }
+
+        // Normal trade: resolve by result/buy item name.
+        TradeDefinition def = resolveNormalTrade(result, offer.getBaseCostA());
         if (def == null) return;
 
         int desired = PriceResolver.resolve(def.tradeId());
@@ -42,7 +67,7 @@ public abstract class VillagerTradesMixin {
         int current = costA.getCount();
         if (current != desired) {
             costA.setCount(desired);
-            ModLogger.get().info("[VB] applied: {} {} -> {}", def.tradeId(), current, desired);
+            ModLogger.get().info("[VB] trade {}: {} -> {}", def.tradeId(), current, desired);
         }
     }
 
@@ -52,62 +77,16 @@ public abstract class VillagerTradesMixin {
         return i >= 0 ? s.substring(i + 1) : s;
     }
 
-    private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        ItemStack result = offer.getResult();
-
-        // 1. Enchanted book — log every possible string representation.
-        if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
-            ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
-            if (enchantments != null && !enchantments.isEmpty()) {
-                var entry = enchantments.entrySet().iterator().next();
-                var holder = entry.getKey();
-
-                ModLogger.get().info("[VB-DEBUG] holder.toString()   = {}", holder.toString());
-
-                try {
-                    ModLogger.get().info("[VB-DEBUG] getRegisteredName() = {}", holder.getRegisteredName());
-                } catch (Throwable t) {
-                    ModLogger.get().info("[VB-DEBUG] getRegisteredName() THREW: {}", t.toString());
-                }
-
-                var keyOpt = holder.unwrapKey();
-                if (keyOpt.isPresent()) {
-                    ModLogger.get().info("[VB-DEBUG] key.toString()      = {}", keyOpt.get().toString());
-                } else {
-                    ModLogger.get().info("[VB-DEBUG] unwrapKey() = empty");
-                }
-
-                // Attempt lookup with getRegisteredName().
-                try {
-                    String enchId = holder.getRegisteredName();
-                    String lookupKey = "enchanted_book:" + enchId;
-                    TradeDefinition def = VanillaTrades.getByBook(lookupKey);
-                    ModLogger.get().info("[VB-DEBUG] lookup='{}' result={}", lookupKey, def != null ? def.tradeId() : "NULL");
-                    if (def != null) return def;
-                } catch (Throwable t) {
-                    ModLogger.get().info("[VB-DEBUG] lookup THREW: {}", t.toString());
-                }
-            }
-            return null;
-        }
-
-        // 2. Sell trade.
+    private static TradeDefinition resolveNormalTrade(ItemStack result, ItemStack costA) {
+        // Sell trade: match by result item.
         if (!result.isEmpty()) {
-            String path = itemPath(result);
-            TradeDefinition def = VanillaTrades.getByResultItem(path);
-            ModLogger.get().debug("[VB-DEBUG] sell='{}' def={}", path, def != null ? def.tradeId() : "NULL");
+            TradeDefinition def = VanillaTrades.getByResultItem(itemPath(result));
             if (def != null) return def;
         }
-
-        // 3. Buy trade.
-        ItemStack costA = offer.getBaseCostA();
+        // Buy trade: result is emerald, match by cost item.
         if (!costA.isEmpty()) {
-            String path = itemPath(costA);
-            TradeDefinition def = VanillaTrades.getByResultItem(path);
-            ModLogger.get().debug("[VB-DEBUG] buy='{}' def={}", path, def != null ? def.tradeId() : "NULL");
-            return def;
+            return VanillaTrades.getByResultItem(itemPath(costA));
         }
-
         return null;
     }
 }

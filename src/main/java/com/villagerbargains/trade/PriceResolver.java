@@ -3,30 +3,36 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 
 /**
- * Combines a TradeDefinition with the active config to produce
- * the final price for a given trade.
+ * Resolves the final emerald cost for a trade.
  *
- * Lookup order:
- *   1. REGISTRY      (all normal trades)
- *   2. BOOK_REGISTRY (enchanted book trades, key = "enchanted_book:minecraft:<id>")
+ * Normal trades:       returns vanillaMin or vanillaMax.
+ * Enchanted book trades: returns min(2 + level * factor, 64) using the actual
+ *                        enchantment level passed by the mixin.
  */
 public final class PriceResolver {
     private PriceResolver() {}
 
-    /**
-     * @return the resolved price (vanillaMin or vanillaMax), or -1 if tradeId is unknown.
-     */
+    /** Resolves price for normal (non-book) trades. Returns -1 if unknown. */
     public static int resolve(String tradeId) {
         TradeDefinition def = VanillaTrades.get(tradeId);
-        if (def == null) def = VanillaTrades.getByBook(tradeId);
         if (def == null) return -1;
 
-        VillagerBargainsConfig cfg = VillagerBargainsConfig.getInstance();
-        VillagerBargainsConfig.PriceMode mode = cfg.effectivePriceMode(tradeId);
-
+        VillagerBargainsConfig.PriceMode mode = VillagerBargainsConfig.getInstance().effectivePriceMode(tradeId);
         return switch (mode) {
             case MINIMUM -> def.vanillaMin();
             case MAXIMUM -> def.vanillaMax();
+        };
+    }
+
+    /** Resolves price for enchanted book trades with the actual enchantment level. Returns -1 if unknown. */
+    public static int resolveBook(String sellKey, int enchantmentLevel) {
+        TradeDefinition def = VanillaTrades.getByBook(sellKey);
+        if (def == null) return -1;
+
+        VillagerBargainsConfig.PriceMode mode = VillagerBargainsConfig.getInstance().effectivePriceMode(sellKey);
+        return switch (mode) {
+            case MINIMUM -> def.resolveMin(enchantmentLevel);
+            case MAXIMUM -> def.resolveMax(enchantmentLevel);
         };
     }
 }

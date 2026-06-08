@@ -10,37 +10,17 @@ import java.util.Map;
  * ─────────────────────────────────────────────────────────────────────────────
  * THIS IS THE ONLY FILE THAT NEEDS UPDATING WHEN MINECRAFT CHANGES TRADE RANGES.
  *
- * Normal trades:    register(map, "minecraft:<profession>/level_N/<name>", min, max)
- *   Naming convention for <name>:
- *     - Buy trades (player gives items):  "<item>_buy"  (result is always emerald)
- *     - Sell trades (player gets items):  "<item>_sell" (result is the named item)
- *   The last segment after the final '/' is used as the RESULT_REGISTRY key:
- *     - "_sell" trades  → key = segment without "_sell" suffix  (the result item)
- *     - "_buy"  trades  → key = segment without "_buy"  suffix  (the buy item)
- *
- * Enchanted books:  registerBook(books, "minecraft:<enchantment_id>", min, max)
- *   — sellKey becomes "enchanted_book:minecraft:<enchantment_id>" internally
- *   — min/max are the emerald cost for that specific enchantment
+ * Normal trades:       register(map, "minecraft:<profession>/level_N/<name>", min, max)
+ * Enchanted books:     registerBook(books, "minecraft:<id>", minPerLevel, maxPerLevel)
+ *   Formula: cost = min(2 + level * factor, 64)
+ *   Treasure enchants have double cost — use doubled factors.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 public final class VanillaTrades {
     private VanillaTrades() {}
 
-    /** Primary registry: tradeId -> TradeDefinition. */
     private static final Map<String, TradeDefinition> REGISTRY;
-
-    /**
-     * Fast lookup by result item name (e.g. "iron_leggings", "bell", "bread").
-     * For sell trades this is the sold item; for buy trades this is the bought item.
-     * Built automatically from REGISTRY — no manual maintenance needed.
-     * Used by the mixin to match offers in O(1) without knowing the profession.
-     */
     private static final Map<String, TradeDefinition> RESULT_REGISTRY;
-
-    /**
-     * Enchanted book registry: sellKey -> TradeDefinition.
-     * Key format: "enchanted_book:minecraft:<enchantment_id>"
-     */
     private static final Map<String, TradeDefinition> BOOK_REGISTRY;
 
     static {
@@ -153,7 +133,7 @@ public final class VanillaTrades {
         register(map, "minecraft:leatherworker/level_4/turtle_shell_sell",  4,  8);
         register(map, "minecraft:leatherworker/level_5/saddle_sell",        8, 10);
 
-        // ── Librarian (non-book trades) ────────────────────────────────────────
+        // ── Librarian (non-book) ────────────────────────────────────────────────
         register(map, "minecraft:librarian/level_1/paper_buy",             24, 36);
         register(map, "minecraft:librarian/level_1/bookshelf_sell",         9, 12);
         register(map, "minecraft:librarian/level_2/book_buy",               8, 10);
@@ -166,48 +146,54 @@ public final class VanillaTrades {
         register(map, "minecraft:librarian/level_5/name_tag_sell",         20, 22);
 
         // ── Librarian enchanted books ──────────────────────────────────────────
-        registerBook(books, "minecraft:protection",            5, 19);
-        registerBook(books, "minecraft:fire_protection",       5, 19);
-        registerBook(books, "minecraft:feather_falling",       5, 19);
-        registerBook(books, "minecraft:blast_protection",      5, 19);
-        registerBook(books, "minecraft:projectile_protection", 5, 19);
-        registerBook(books, "minecraft:respiration",           5, 19);
-        registerBook(books, "minecraft:aqua_affinity",         5,  6);
-        registerBook(books, "minecraft:thorns",                5, 19);
-        registerBook(books, "minecraft:depth_strider",         5, 19);
-        registerBook(books, "minecraft:frost_walker",          5, 19);
-        registerBook(books, "minecraft:binding_curse",         5,  6);
-        registerBook(books, "minecraft:sharpness",             5, 19);
-        registerBook(books, "minecraft:smite",                 5, 19);
-        registerBook(books, "minecraft:bane_of_arthropods",    5, 19);
-        registerBook(books, "minecraft:knockback",             5, 19);
-        registerBook(books, "minecraft:fire_aspect",           5, 19);
-        registerBook(books, "minecraft:looting",               5, 19);
-        registerBook(books, "minecraft:sweeping_edge",         5, 19);
-        registerBook(books, "minecraft:efficiency",            5, 19);
-        registerBook(books, "minecraft:silk_touch",            5, 19);
-        registerBook(books, "minecraft:unbreaking",            5, 19);
-        registerBook(books, "minecraft:fortune",               5, 19);
-        registerBook(books, "minecraft:power",                 5, 19);
-        registerBook(books, "minecraft:punch",                 5, 19);
-        registerBook(books, "minecraft:flame",                 5,  8);
-        registerBook(books, "minecraft:infinity",              5,  8);
-        registerBook(books, "minecraft:luck_of_the_sea",       5, 19);
-        registerBook(books, "minecraft:lure",                  5, 19);
-        registerBook(books, "minecraft:loyalty",               5, 19);
-        registerBook(books, "minecraft:impaling",              5, 19);
-        registerBook(books, "minecraft:riptide",               5, 19);
-        registerBook(books, "minecraft:channeling",            5,  8);
-        registerBook(books, "minecraft:multishot",             5,  8);
-        registerBook(books, "minecraft:quick_charge",          5, 19);
-        registerBook(books, "minecraft:piercing",              5, 19);
-        registerBook(books, "minecraft:mending",              20, 38);
-        registerBook(books, "minecraft:vanishing_curse",       5,  6);
-        registerBook(books, "minecraft:soul_speed",            5, 19);
-        registerBook(books, "minecraft:swift_sneak",           5, 19);
-        registerBook(books, "minecraft:wind_burst",            5, 19);
-        registerBook(books, "minecraft:density",               5, 19);
-        registerBook(books, "minecraft:breach",                5, 19);
+        // Formula: cost = min(2 + level * factor, 64)
+        // Source: Minecraft Wiki — Enchantment mechanics, librarian trades
+        // Normal enchants: minFactor=1, maxFactor=5  → lvl1=3..7, lvl5=7..27
+        // Treasure enchants: minFactor=2, maxFactor=10 → lvl1=4..12, lvl5=12..52
+        // Aqua Affinity / single-level: treated as level 1 always
+        // Mending, Soul Speed, Swift Sneak: treasure (double cost)
+        registerBook(books, "minecraft:protection",            1,  5);
+        registerBook(books, "minecraft:fire_protection",       1,  5);
+        registerBook(books, "minecraft:feather_falling",       1,  5);
+        registerBook(books, "minecraft:blast_protection",      1,  5);
+        registerBook(books, "minecraft:projectile_protection", 1,  5);
+        registerBook(books, "minecraft:respiration",           1,  5);
+        registerBook(books, "minecraft:aqua_affinity",         1,  2);  // max level 1
+        registerBook(books, "minecraft:thorns",                1,  5);
+        registerBook(books, "minecraft:depth_strider",         1,  5);
+        registerBook(books, "minecraft:frost_walker",          2, 10);  // treasure
+        registerBook(books, "minecraft:binding_curse",         2, 10);  // treasure
+        registerBook(books, "minecraft:sharpness",             1,  5);
+        registerBook(books, "minecraft:smite",                 1,  5);
+        registerBook(books, "minecraft:bane_of_arthropods",    1,  5);
+        registerBook(books, "minecraft:knockback",             1,  5);
+        registerBook(books, "minecraft:fire_aspect",           1,  5);
+        registerBook(books, "minecraft:looting",               1,  5);
+        registerBook(books, "minecraft:sweeping_edge",         1,  5);
+        registerBook(books, "minecraft:efficiency",            1,  5);
+        registerBook(books, "minecraft:silk_touch",            1,  2);  // max level 1
+        registerBook(books, "minecraft:unbreaking",            1,  5);
+        registerBook(books, "minecraft:fortune",               1,  5);
+        registerBook(books, "minecraft:power",                 1,  5);
+        registerBook(books, "minecraft:punch",                 1,  5);
+        registerBook(books, "minecraft:flame",                 1,  2);  // max level 1
+        registerBook(books, "minecraft:infinity",              1,  2);  // max level 1, treasure
+        registerBook(books, "minecraft:luck_of_the_sea",       1,  5);
+        registerBook(books, "minecraft:lure",                  1,  5);
+        registerBook(books, "minecraft:loyalty",               1,  5);
+        registerBook(books, "minecraft:impaling",              1,  5);
+        registerBook(books, "minecraft:riptide",               1,  5);
+        registerBook(books, "minecraft:channeling",            1,  2);  // max level 1
+        registerBook(books, "minecraft:multishot",             1,  2);  // max level 1
+        registerBook(books, "minecraft:quick_charge",          1,  5);
+        registerBook(books, "minecraft:piercing",              1,  5);
+        registerBook(books, "minecraft:mending",               2, 10);  // treasure
+        registerBook(books, "minecraft:vanishing_curse",       2, 10);  // treasure
+        registerBook(books, "minecraft:soul_speed",            2, 10);  // treasure
+        registerBook(books, "minecraft:swift_sneak",           2, 10);  // treasure
+        registerBook(books, "minecraft:wind_burst",            2, 10);  // treasure
+        registerBook(books, "minecraft:density",               1,  5);
+        registerBook(books, "minecraft:breach",                1,  5);
 
         // ── Mason ──────────────────────────────────────────────────────────────
         register(map, "minecraft:mason/level_1/clay_buy",                  10, 12);
@@ -230,7 +216,7 @@ public final class VanillaTrades {
         register(map, "minecraft:shepherd/level_5/banner_sell",             3,  5);
         register(map, "minecraft:shepherd/level_5/bed_sell",                3,  5);
 
-        // ── Toolsmith ──────────────────────────────────────────────────────────
+        // ── Toolsmith ────────────────────────────────────────────────────────
         register(map, "minecraft:toolsmith/level_1/coal_buy",              15, 21);
         register(map, "minecraft:toolsmith/level_1/stone_axe_sell",         1,  2);
         register(map, "minecraft:toolsmith/level_1/stone_shovel_sell",      1,  2);
@@ -264,38 +250,34 @@ public final class VanillaTrades {
         BOOK_REGISTRY = Collections.unmodifiableMap(books);
 
         // Build RESULT_REGISTRY automatically from REGISTRY.
-        // Key = last segment of tradeId, stripped of "_sell" or "_buy" suffix.
         Map<String, TradeDefinition> results = new LinkedHashMap<>();
         for (TradeDefinition def : map.values()) {
             String seg = def.tradeId().substring(def.tradeId().lastIndexOf('/') + 1);
             String key;
             if (seg.endsWith("_sell")) {
-                key = seg.substring(0, seg.length() - 5); // strip "_sell"
+                key = seg.substring(0, seg.length() - 5);
             } else if (seg.endsWith("_buy")) {
-                key = seg.substring(0, seg.length() - 4); // strip "_buy"
+                key = seg.substring(0, seg.length() - 4);
             } else {
                 key = seg;
             }
-            results.putIfAbsent(key, def); // first entry wins for duplicates
+            results.putIfAbsent(key, def);
         }
         RESULT_REGISTRY = Collections.unmodifiableMap(results);
     }
 
-    // ── Registry helpers ───────────────────────────────────────────────────────
     private static void register(Map<String, TradeDefinition> map, String id, int min, int max) {
         map.put(id, new TradeDefinition(id, min, max));
     }
 
-    private static void registerBook(Map<String, TradeDefinition> books, String enchId, int min, int max) {
+    private static void registerBook(Map<String, TradeDefinition> books, String enchId,
+                                     int minPerLevel, int maxPerLevel) {
         String sellKey = "enchanted_book:" + enchId;
-        books.put(sellKey, new TradeDefinition(sellKey, min, max, sellKey));
+        books.put(sellKey, new TradeDefinition(sellKey, 0, 0, sellKey, minPerLevel, maxPerLevel));
     }
 
-    /** Lookup by full tradeId. */
     public static TradeDefinition get(String tradeId)           { return REGISTRY.get(tradeId); }
-    /** Lookup by enchanted book sell key. */
     public static TradeDefinition getByBook(String sellKey)     { return BOOK_REGISTRY.get(sellKey); }
-    /** Lookup by result/buy item name (e.g. "iron_leggings", "coal"). O(1). */
     public static TradeDefinition getByResultItem(String name)  { return RESULT_REGISTRY.get(name); }
     public static Map<String, TradeDefinition> getAll()         { return REGISTRY; }
     public static Map<String, TradeDefinition> getAllBooks()     { return BOOK_REGISTRY; }
