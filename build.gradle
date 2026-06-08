@@ -24,9 +24,8 @@ loom {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Yarn mappings — provides human-readable class names (VillagerEntity etc)
-    // Update yarn_mappings in gradle.properties when upgrading Minecraft
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    // MC 26.1+ ships unobfuscated — no mappings line needed.
+    // Class names like net.minecraft.world.entity.npc.Villager work directly.
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
