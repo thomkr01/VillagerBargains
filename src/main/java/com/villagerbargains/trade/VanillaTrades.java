@@ -6,25 +6,32 @@ import java.util.Map;
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * VANILLA TRADE REGISTRY  —  Minecraft 26.1.2
+ * VANILLA TRADE REGISTRY  —  Minecraft 26.1.2 / 1.21.x
  * ─────────────────────────────────────────────────────────────────────────────
  * THIS IS THE ONLY FILE THAT NEEDS UPDATING WHEN MINECRAFT CHANGES TRADE RANGES.
  *
- * To update for a new MC version:
- *  1. Change the version comment above.
- *  2. Add / remove / adjust register(...) entries below.
- *  3. Bump minecraft_version in gradle.properties.
- *
- * Format:  register(map, "minecraft:<profession>/level_<N>/<name>", min, max);
+ * Normal trades:    register(map, "minecraft:<profession>/level_N/<name>", min, max)
+ * Enchanted books:  registerBook(map, "minecraft:enchantment_id", min, max)
+ *   — key becomes "enchanted_book:minecraft:enchantment_id" internally
+ *   — min/max are the emerald cost for that specific enchantment
  * ─────────────────────────────────────────────────────────────────────────────
  */
 public final class VanillaTrades {
     private VanillaTrades() {}
 
+    /** Primary registry: tradeId -> TradeDefinition (all normal trades). */
     private static final Map<String, TradeDefinition> REGISTRY;
 
+    /**
+     * Secondary registry for enchanted books: sellKey -> TradeDefinition.
+     * Key format: "enchanted_book:minecraft:<enchantment_id>"
+     * Looked up by the SELL item enchantment, not the buy item.
+     */
+    private static final Map<String, TradeDefinition> BOOK_REGISTRY;
+
     static {
-        Map<String, TradeDefinition> map = new LinkedHashMap<>();
+        Map<String, TradeDefinition> map  = new LinkedHashMap<>();
+        Map<String, TradeDefinition> books = new LinkedHashMap<>();
 
         // ── Armorer ────────────────────────────────────────────────────────────
         register(map, "minecraft:armorer/level_1/coal_buy",             16, 24);
@@ -143,12 +150,53 @@ public final class VanillaTrades {
         register(map, "minecraft:librarian/level_4/clock_sell",          5,  7);
         register(map, "minecraft:librarian/level_4/compass_sell",        4,  6);
         register(map, "minecraft:librarian/level_5/name_tag_sell",      20, 22);
-        // Enchanted books (price varies by enchantment — these are the emerald cost bounds)
-        register(map, "minecraft:librarian/level_1/enchanted_book",      5, 64);
-        register(map, "minecraft:librarian/level_2/enchanted_book",      5, 64);
-        register(map, "minecraft:librarian/level_3/enchanted_book",      5, 64);
-        register(map, "minecraft:librarian/level_4/enchanted_book",      5, 64);
-        register(map, "minecraft:librarian/level_5/enchanted_book",      5, 64);
+
+        // ── Librarian enchanted books — cost is emeralds for that enchantment ──
+        // Treasure enchants (only from chests/fishing/etc — librarians DO sell these)
+        // Format: registerBook(books, "minecraft:enchantment_id", min_cost, max_cost)
+        // Source: Minecraft Wiki — Librarian Trades, MC 1.21
+        registerBook(books, "minecraft:protection",           5, 19);
+        registerBook(books, "minecraft:fire_protection",      5, 19);
+        registerBook(books, "minecraft:feather_falling",      5, 19);
+        registerBook(books, "minecraft:blast_protection",     5, 19);
+        registerBook(books, "minecraft:projectile_protection",5, 19);
+        registerBook(books, "minecraft:respiration",          5, 19);
+        registerBook(books, "minecraft:aqua_affinity",        5,  6);
+        registerBook(books, "minecraft:thorns",               5, 19);
+        registerBook(books, "minecraft:depth_strider",        5, 19);
+        registerBook(books, "minecraft:frost_walker",         5, 19);
+        registerBook(books, "minecraft:binding_curse",        5,  6);
+        registerBook(books, "minecraft:sharpness",            5, 19);
+        registerBook(books, "minecraft:smite",                5, 19);
+        registerBook(books, "minecraft:bane_of_arthropods",   5, 19);
+        registerBook(books, "minecraft:knockback",            5, 19);
+        registerBook(books, "minecraft:fire_aspect",          5, 19);
+        registerBook(books, "minecraft:looting",              5, 19);
+        registerBook(books, "minecraft:sweeping_edge",        5, 19);
+        registerBook(books, "minecraft:efficiency",           5, 19);
+        registerBook(books, "minecraft:silk_touch",           5, 19);
+        registerBook(books, "minecraft:unbreaking",           5, 19);
+        registerBook(books, "minecraft:fortune",              5, 19);
+        registerBook(books, "minecraft:power",                5, 19);
+        registerBook(books, "minecraft:punch",                5, 19);
+        registerBook(books, "minecraft:flame",                5,  8);
+        registerBook(books, "minecraft:infinity",             5,  8);
+        registerBook(books, "minecraft:luck_of_the_sea",      5, 19);
+        registerBook(books, "minecraft:lure",                 5, 19);
+        registerBook(books, "minecraft:loyalty",              5, 19);
+        registerBook(books, "minecraft:impaling",             5, 19);
+        registerBook(books, "minecraft:riptide",              5, 19);
+        registerBook(books, "minecraft:channeling",           5,  8);
+        registerBook(books, "minecraft:multishot",            5,  8);
+        registerBook(books, "minecraft:quick_charge",         5, 19);
+        registerBook(books, "minecraft:piercing",             5, 19);
+        registerBook(books, "minecraft:mending",             20, 38);
+        registerBook(books, "minecraft:vanishing_curse",      5,  6);
+        registerBook(books, "minecraft:soul_speed",           5, 19);
+        registerBook(books, "minecraft:swift_sneak",          5, 19);
+        registerBook(books, "minecraft:wind_burst",           5, 19);
+        registerBook(books, "minecraft:density",              5, 19);
+        registerBook(books, "minecraft:breach",               5, 19);
 
         // ── Mason ──────────────────────────────────────────────────────────────
         register(map, "minecraft:mason/level_1/clay_buy",               10, 12);
@@ -201,7 +249,8 @@ public final class VanillaTrades {
         register(map, "minecraft:weaponsmith/level_4/diamond_axe_sell", 12, 17);
         register(map, "minecraft:weaponsmith/level_5/diamond_sword_sell",13, 17);
 
-        REGISTRY = Collections.unmodifiableMap(map);
+        REGISTRY      = Collections.unmodifiableMap(map);
+        BOOK_REGISTRY = Collections.unmodifiableMap(books);
     }
 
     // ── Registry helpers ───────────────────────────────────────────────────────
@@ -209,6 +258,14 @@ public final class VanillaTrades {
         map.put(id, new TradeDefinition(id, min, max));
     }
 
-    public static TradeDefinition get(String tradeId) { return REGISTRY.get(tradeId); }
-    public static Map<String, TradeDefinition> getAll() { return REGISTRY; }
+    /** Registers an enchanted-book trade keyed by sell enchantment. */
+    private static void registerBook(Map<String, TradeDefinition> books, String enchId, int min, int max) {
+        String sellKey = "enchanted_book:" + enchId;
+        books.put(sellKey, new TradeDefinition(sellKey, min, max, sellKey));
+    }
+
+    public static TradeDefinition get(String tradeId)       { return REGISTRY.get(tradeId); }
+    public static TradeDefinition getByBook(String sellKey) { return BOOK_REGISTRY.get(sellKey); }
+    public static Map<String, TradeDefinition> getAll()     { return REGISTRY; }
+    public static Map<String, TradeDefinition> getAllBooks() { return BOOK_REGISTRY; }
 }

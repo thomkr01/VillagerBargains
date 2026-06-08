@@ -5,7 +5,10 @@ import com.villagerbargains.trade.PriceResolver;
 import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,17 +18,20 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into Villager#updateTrades (called when a villager generates new offers)
- * and sets each offer's price to MINIMUM or MAXIMUM per config.
+ * Hooks into Villager#updateTrades and sets each offer's emerald cost
+ * to MINIMUM or MAXIMUM per config.
  *
- * To support new trade types: add entries to VanillaTrades.
+ * Matching strategy:
+ *  1. If sell item is an enchanted_book → look up by enchantment ID (BOOK_REGISTRY)
+ *  2. Otherwise                         → look up by buy item name  (REGISTRY)
+ *
+ * To support new trades: edit VanillaTrades.
  * To change price logic: edit PriceResolver.
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.Villager")
 public abstract class VillagerTradesMixin {
 
-    @Shadow
-    public abstract MerchantOffers getOffers();
+    @Shadow public abstract MerchantOffers getOffers();
 
     @Inject(method = "updateTrades", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
@@ -33,7 +39,6 @@ public abstract class VillagerTradesMixin {
         if (offers == null || offers.isEmpty()) return;
 
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-
         for (MerchantOffer offer : offers) {
             applyPrice(offer, config);
         }
@@ -43,9 +48,7 @@ public abstract class VillagerTradesMixin {
         ItemStack costA = offer.getBaseCostA();
         if (costA.isEmpty()) return;
 
-        // Look up the trade by the buy item name
-        String itemId = costA.getItem().toString();
-        TradeDefinition def = findDefinition(itemId);
+        TradeDefinition def = resolveDefinition(offer);
         if (def == null) return;
 
         int desired = PriceResolver.resolve(def.tradeId());
@@ -58,13 +61,37 @@ public abstract class VillagerTradesMixin {
         }
     }
 
-    /** Matches a buy item ID to the best TradeDefinition. */
-    private static TradeDefinition findDefinition(String itemId) {
-        int colon = itemId.lastIndexOf(':');
+    /**
+     * Resolves the TradeDefinition for an offer.
+     * Enchanted books: matched by sell enchantment (step 1).
+     * All other trades: matched by buy item name (step 2).
+     */
+    private static TradeDefinition resolveDefinition(MerchantOffer offer) {
+        // Step 1: enchanted book — use sell item enchantment as key
+        ItemStack result = offer.getResult();
+        if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
+            ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
+            if (enchantments != null && !enchantments.isEmpty()) {
+                // Take first enchantment (books always have exactly one from a villager)
+                var enchEntry = enchantments.entrySet().iterator().next();
+                String enchId  = enchEntry.getKey().unwrapKey()
+                        .map(k -> k.location().toString())
+                        .orElse(null);
+                if (enchId != null) {
+                    String sellKey = "enchanted_book:" + enchId;
+                    TradeDefinition def = VanillaTrades.getByBook(sellKey);
+                    if (def != null) return def;
+                }
+            }
+        }
+
+        // Step 2: all other trades — match by buy item name
+        String itemId   = offer.getBaseCostA().getItem().toString();
+        int colon       = itemId.lastIndexOf(':');
         String itemName = colon >= 0 ? itemId.substring(colon + 1) : itemId;
         for (java.util.Map.Entry<String, TradeDefinition> e : VanillaTrades.getAll().entrySet()) {
-            String tid = e.getKey();
-            int slash = tid.lastIndexOf('/');
+            String tid      = e.getKey();
+            int slash       = tid.lastIndexOf('/');
             String tradeName = slash >= 0 ? tid.substring(slash + 1) : tid;
             if (tradeName.equals(itemName) || tradeName.startsWith(itemName)) {
                 return e.getValue();
