@@ -3,14 +3,14 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 
 /**
- * Resolves the final clamped price for a trade given a config.
+ * Resolves the final price for a trade.
  *
- * Rules:
- *  - MINIMUM : vanilla minimum (godroll) — never goes lower than vanilla min
- *  - MAXIMUM : vanilla maximum
- *  - CUSTOM  : user-supplied value, clamped to [vanillaMin, vanillaMax]
+ * For now this is intentionally trivial: when the mod is enabled, every
+ * known trade is forced to its vanilla minimum price (godroll). When the
+ * mod is disabled, callers should simply skip applying any override.
  *
- * PriceResolver is the single source of price-resolution logic.
+ * Keeping this as a dedicated class means we can reintroduce additional
+ * modes or per-trade overrides later without touching mixins.
  */
 public final class PriceResolver {
     private PriceResolver() {}
@@ -18,17 +18,10 @@ public final class PriceResolver {
     /**
      * @param def     vanilla trade definition (min/max values)
      * @param config  the loaded VillagerBargainsConfig
-     * @return final price, always within [def.vanillaMin(), def.vanillaMax()]
+     * @return final price, or -1 if the mod is disabled for this world
      */
     public static int resolve(TradeDefinition def, VillagerBargainsConfig config) {
-        String tradeId = def.tradeId();
-        VillagerBargainsConfig.PriceMode mode = config.effectivePriceMode(tradeId);
-        int customPrice = config.effectiveCustomPrice(tradeId);
-
-        return switch (mode) {
-            case MINIMUM -> def.vanillaMin();
-            case MAXIMUM -> def.vanillaMax();
-            case CUSTOM -> Math.max(def.vanillaMin(), Math.min(def.vanillaMax(), customPrice));
-        };
+        if (!config.enabled) return -1;
+        return def.vanillaMin();
     }
 }

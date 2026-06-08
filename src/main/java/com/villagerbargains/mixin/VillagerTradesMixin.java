@@ -36,17 +36,20 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
 
     @Inject(method = "updateTrades", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
+        VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
+        if (!config.enabled) return;
+
         MerchantOffers offers = this.getOffers();
         if (offers == null || offers.isEmpty()) return;
 
         for (MerchantOffer offer : offers) {
-            applyPriceConfig(offer);
+            applyPriceConfig(offer, config);
         }
     }
 
     // ── Internal helpers ───────────────────────────────────────────────────────
 
-    private static void applyPriceConfig(MerchantOffer offer) {
+    private static void applyPriceConfig(MerchantOffer offer, VillagerBargainsConfig config) {
         ItemStack firstBuy = offer.getBaseCostA();
         if (firstBuy.isEmpty()) return;
 
@@ -54,9 +57,8 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
         TradeDefinition def = findDefinitionByItem(itemId);
         if (def == null) return;
 
-        VillagerBargainsConfig config  = VillagerBargainsConfig.getInstance();
-        int desiredPrice = PriceResolver.resolve(def.tradeId(), config);
-        if (desiredPrice < 0) return; // unknown trade or config disabled
+        int desiredPrice = PriceResolver.resolve(def, config);
+        if (desiredPrice < 0) return; // mod disabled
 
         int currentCount = firstBuy.getCount();
         if (currentCount != desiredPrice) {

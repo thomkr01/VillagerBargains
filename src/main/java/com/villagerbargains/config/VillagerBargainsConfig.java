@@ -10,67 +10,40 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Loads and saves config from config/villagerbargains.json.
- * To change price behaviour globally or per-trade, edit that file.
- * To add new config fields: add a field here, update defaults below.
+ *
+ * CURRENTLY SUPER SIMPLE:
+ *  - Only one global toggle: enabled (true/false).
+ *  - When enabled, all known trades roll at their vanilla minimum price.
+ *
+ * This keeps the mod tiny and modular. If we ever add per-trade or
+ * multi-mode config back, we only need to extend this class and the
+ * PriceResolver.
  */
 public final class VillagerBargainsConfig {
-    // ── Constants ──────────────────────────────────────────────────────────────
     private static final String CONFIG_FILE_NAME = "villagerbargains.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static VillagerBargainsConfig instance;
 
-    // ── Singleton ──────────────────────────────────────────────────────────────
     public static VillagerBargainsConfig getInstance() {
         if (instance == null) instance = loadOrCreate();
         return instance;
     }
 
     // ── Config Fields ──────────────────────────────────────────────────────────
-    @SerializedName("globalPriceMode")
-    public PriceMode globalPriceMode = PriceMode.MINIMUM;
 
-    @SerializedName("globalCustomPrice")
-    public int globalCustomPrice = 1;
-
-    /** Key: tradeId (e.g. "minecraft:librarian/level_1/enchanted_book") */
-    @SerializedName("perTradePrices")
-    public Map<String, TradeOverride> perTradePrices = new LinkedHashMap<>();
-
-    // ── Enums & Nested Types ───────────────────────────────────────────────────
-    public enum PriceMode {
-        /** Vanilla minimum price (godroll) — default */
-        MINIMUM,
-        /** Vanilla maximum price */
-        MAXIMUM,
-        /** Custom price, clamped to [vanillaMin, vanillaMax] */
-        CUSTOM
-    }
-
-    public static final class TradeOverride {
-        @SerializedName("priceMode")
-        public PriceMode priceMode = PriceMode.MINIMUM;
-
-        @SerializedName("customPrice")
-        public int customPrice = 1;
-    }
-
-    // ── Helpers ────────────────────────────────────────────────────────────────
-    public PriceMode effectivePriceMode(String tradeId) {
-        TradeOverride override = perTradePrices.get(tradeId);
-        return override != null ? override.priceMode : globalPriceMode;
-    }
-
-    public int effectiveCustomPrice(String tradeId) {
-        TradeOverride override = perTradePrices.get(tradeId);
-        return override != null ? override.customPrice : globalCustomPrice;
-    }
+    /**
+     * When true, all known villager trades are forced to their vanilla
+     * minimum emerald cost (godroll). When false, the mod is effectively
+     * disabled and prices remain vanilla.
+     */
+    @SerializedName("enabled")
+    public boolean enabled = true;
 
     // ── I/O ────────────────────────────────────────────────────────────────────
+
     private static Path configPath() {
         return FabricLoader.getInstance().getConfigDir().resolve(CONFIG_FILE_NAME);
     }
