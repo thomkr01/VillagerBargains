@@ -1,4 +1,4 @@
-# VillagerBargains
+# Villager Bargains
 
 A Fabric mod for **Minecraft 26.1.2** that locks villager trade prices to either the **minimum** or **maximum** vanilla price — no more RNG.
 
@@ -38,15 +38,18 @@ Example prices locked in by this mod:
 | Enchanted Book (Lvl 3) | 11 emeralds | 45 emeralds |
 | Enchanted Book (Lvl 4) | 14 emeralds | 58 emeralds |
 | Enchanted Book (Lvl 5) | 17 emeralds | 64 emeralds |
-| Diamond Gear | 1 emerald | 3 emeralds |
-| Regular Items | 1 emerald | varies |
 
 ## Versioning
 
-| Version | Minecraft | Fabric Loader |
-|---------|-----------|---------------|
-| 1.0.1 | 26.1.2 | 0.19.3 |
-| 1.0.0 | 26.1.2 | 0.19.3 |
+Versions follow `MAJOR.MINOR.PATCH`:
+
+| Part | When it changes |
+|------|----------------|
+| `MAJOR` | Complete rewrite or breaking change. Larger Minecraft updates. |
+| `MINOR` | New feature added. |
+| `PATCH` | Bug fix or minor tweak. |
+
+So `1.0.1` means: first stable release, no new features, one bug fix/tweak.
 
 ## License
 
