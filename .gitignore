@@ -34,3 +34,7 @@ remapped_*.jar
 # Environment
 .env
 local.properties
+
+# Generated trade override data files (produced by generateTradeResources Gradle task)
+# Do NOT commit these — they are re-generated at build time from config/villagerbargains.json
+src/main/resources/data/minecraft/villager_trade/
