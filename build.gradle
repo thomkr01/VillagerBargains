@@ -28,7 +28,27 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
+// ── Trade resource generator ──────────────────────────────────────────────────
+// Reads config/villagerbargains.json (or uses defaults) and writes one JSON
+// file per trade into src/main/resources/data/ before processResources runs.
+// Run manually:  ./gradlew generateTradeResources
+// Run on build:  automatic (wired below)
+tasks.register('generateTradeResources', GenerateTradeResourcesTask) {
+    // Output goes directly into the resources tree so Fabric picks it up
+    outputDir = file('src/main/resources')
+
+    // Point at the project-level config file if it already exists.
+    // On a fresh checkout this file won’t exist yet; defaults are used instead.
+    def cfgFile = file('config/villagerbargains.json')
+    if (cfgFile.exists()) {
+        configFile = cfgFile
+    }
+}
+
 processResources {
+    // Ensure trade JSON files are regenerated before resources are packaged
+    dependsOn 'generateTradeResources'
+
     def version = project.version
     inputs.property "version", version
     filesMatching("fabric.mod.json") {
