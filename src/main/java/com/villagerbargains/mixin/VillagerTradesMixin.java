@@ -23,8 +23,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * to MINIMUM or MAXIMUM per config.
  *
  * Matching strategy:
- *  1. If sell item is an enchanted_book -> look up by enchantment ID (BOOK_REGISTRY)
- *  2. Otherwise                         -> look up by buy item name  (REGISTRY)
+ *  1. Sell item is enchanted_book -> look up by enchantment ID (BOOK_REGISTRY)
+ *  2. All other trades            -> look up by buy item name  (REGISTRY)
  *
  * To support new trades: edit VanillaTrades.
  * To change price logic: edit PriceResolver.
@@ -62,13 +62,8 @@ public abstract class VillagerTradesMixin {
         }
     }
 
-    /**
-     * Resolves the TradeDefinition for an offer.
-     * Enchanted books: matched by sell enchantment (step 1).
-     * All other trades: matched by buy item name (step 2).
-     */
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        // Step 1: enchanted book — use sell enchantment as lookup key
+        // Step 1: enchanted book — match by sell enchantment ID
         ItemStack result = offer.getResult();
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);

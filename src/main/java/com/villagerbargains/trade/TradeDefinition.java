@@ -3,13 +3,13 @@ package com.villagerbargains.trade;
 /**
  * Immutable record describing a single villager trade.
  *
- * sellKey  — optional secondary lookup key used when the buy item alone
+ * sellKey  — optional secondary lookup key, used when the buy item alone
  *            is ambiguous (e.g. all enchanted book trades buy with emeralds).
- *            Format: "<item_id>:<enchantment_id>"  e.g. "enchanted_book:minecraft:piercing"
+ *            Format: "enchanted_book:minecraft:<enchantment_id>"
  *            Null for all normal (non-enchanted-book) trades.
  *
  * vanillaMin / vanillaMax come from VanillaTrades — the only file
- * that needs updating when Minecraft changes trade ranges.
+ * that needs updating when Minecraft changes trade price ranges.
  */
 public record TradeDefinition(String tradeId, int vanillaMin, int vanillaMax, String sellKey) {
 

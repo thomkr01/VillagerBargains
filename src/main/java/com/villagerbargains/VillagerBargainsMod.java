@@ -5,7 +5,7 @@ import com.villagerbargains.util.ModLogger;
 import net.fabricmc.api.ModInitializer;
 
 /**
- * Entry point. Just loads config and logs startup.
+ * Entry point. Loads config and logs startup.
  * All price logic is handled by VillagerTradesMixin.
  */
 public final class VillagerBargainsMod implements ModInitializer {
