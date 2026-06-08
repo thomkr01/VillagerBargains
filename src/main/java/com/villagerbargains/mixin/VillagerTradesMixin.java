@@ -17,13 +17,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Injects at TAIL of Villager#updateTrades(ServerLevel).
- *
- * Enchantment ID: Holder.getRegisteredName() returns "minecraft:power" directly.
- * Item path:      Item.toString()             returns "minecraft:iron_leggings".
- * No ResourceLocation, no BuiltInRegistries, no string format parsing.
- */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
 
@@ -49,15 +42,10 @@ public abstract class VillagerTradesMixin {
         int current = costA.getCount();
         if (current != desired) {
             costA.setCount(desired);
-            ModLogger.get().debug("VillagerBargains: {} {} -> {}", def.tradeId(), current, desired);
+            ModLogger.get().info("[VB] applied: {} {} -> {}", def.tradeId(), current, desired);
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
-    /**
-     * Item.toString() = "minecraft:iron_leggings" — take everything after last ':'.
-     */
     private static String itemPath(ItemStack stack) {
         String s = stack.getItem().toString();
         int i = s.lastIndexOf(':');
@@ -67,28 +55,64 @@ public abstract class VillagerTradesMixin {
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book — use Holder.getRegisteredName() for a clean "namespace:path" string.
+        // 1. Enchanted book — log every possible string representation of the holder.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                // getRegisteredName() returns e.g. "minecraft:power" — exactly what we need.
-                String enchId = enchantments.entrySet().iterator().next()
-                        .getKey().getRegisteredName();
-                return VanillaTrades.getByBook("enchanted_book:" + enchId);
+                var entry = enchantments.entrySet().iterator().next();
+                var holder = entry.getKey();
+
+                // Log every available string so we can see what works at runtime.
+                ModLogger.get().info("[VB-DEBUG] holder.toString()         = {}", holder.toString());
+
+                try {
+                    ModLogger.get().info("[VB-DEBUG] getRegisteredName()       = {}", holder.getRegisteredName());
+                } catch (Throwable t) {
+                    ModLogger.get().info("[VB-DEBUG] getRegisteredName() THREW: {}", t.toString());
+                }
+
+                var keyOpt = holder.unwrapKey();
+                if (keyOpt.isPresent()) {
+                    var key = keyOpt.get();
+                    ModLogger.get().info("[VB-DEBUG] key.toString()            = {}", key.toString());
+                    try {
+                        ModLogger.get().info("[VB-DEBUG] key.location().toString() = {}", key.location().toString());
+                    } catch (Throwable t) {
+                        ModLogger.get().info("[VB-DEBUG] key.location() THREW:      {}", t.toString());
+                    }
+                } else {
+                    ModLogger.get().info("[VB-DEBUG] unwrapKey() = empty");
+                }
+
+                // Attempt lookup with getRegisteredName() and log result.
+                try {
+                    String enchId = holder.getRegisteredName();
+                    String lookupKey = "enchanted_book:" + enchId;
+                    TradeDefinition def = VanillaTrades.getByBook(lookupKey);
+                    ModLogger.get().info("[VB-DEBUG] lookup key='{}' result={}", lookupKey, def != null ? def.tradeId() : "NULL");
+                    if (def != null) return def;
+                } catch (Throwable t) {
+                    ModLogger.get().info("[VB-DEBUG] lookup via getRegisteredName THREW: {}", t.toString());
+                }
             }
             return null;
         }
 
-        // 2. Sell trade — match by result item path.
+        // 2. Sell trade.
         if (!result.isEmpty()) {
-            TradeDefinition def = VanillaTrades.getByResultItem(itemPath(result));
+            String path = itemPath(result);
+            TradeDefinition def = VanillaTrades.getByResultItem(path);
+            ModLogger.get().debug("[VB-DEBUG] sell item='{}' result={}", path, def != null ? def.tradeId() : "NULL");
             if (def != null) return def;
         }
 
-        // 3. Buy trade — result is emerald, match by cost item path.
+        // 3. Buy trade.
         ItemStack costA = offer.getBaseCostA();
         if (!costA.isEmpty()) {
-            return VanillaTrades.getByResultItem(itemPath(costA));
+            String path = itemPath(costA);
+            TradeDefinition def = VanillaTrades.getByResultItem(path);
+            ModLogger.get().debug("[VB-DEBUG] buy  item='{}' result={}", path, def != null ? def.tradeId() : "NULL");
+            return def;
         }
 
         return null;
