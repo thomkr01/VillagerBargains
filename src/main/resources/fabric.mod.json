@@ -3,7 +3,7 @@
   "id": "villagerbargains",
   "version": "${version}",
   "name": "VillagerBargains",
-  "description": "Guarantees villager trades roll at the cheapest possible price for newly generated offers. Configurable per-trade via JSON config. Server-side only in multiplayer.",
+  "description": "Guarantees villager trades at MINIMUM or MAXIMUM price. Configurable per-trade via a JSON config file.",
   "authors": ["Tommy"],
   "contact": {},
   "license": "MIT",
@@ -13,9 +13,6 @@
       "com.villagerbargains.VillagerBargainsMod"
     ]
   },
-  "mixins": [
-    "villagerbargains.mixins.json"
-  ],
   "depends": {
     "fabricloader": ">=0.19.3",
     "fabric-api": "*",
