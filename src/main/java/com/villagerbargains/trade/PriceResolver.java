@@ -1,8 +1,9 @@
 package com.villagerbargains.trade;
 
 import com.villagerbargains.config.VillagerBargainsConfig;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -56,7 +57,10 @@ public final class PriceResolver {
 
     /**
      * Reproduces Minecraft's enchanted book price formula for librarians.
-     * Uses the 1.20.5+ DataComponents API.
+     *
+     * In Minecraft 1.21+, enchantments are fully data-driven.
+     * "Treasure" is determined by the EnchantmentTags.TREASURE tag, not
+     * by a method on the Enchantment class.
      *
      * Formula:
      *   MINIMUM base = 2 + 3 * level
@@ -74,11 +78,11 @@ public final class PriceResolver {
         }
 
         var entry = enchantments.entrySet().iterator().next();
-        Enchantment enchantment = entry.getKey().value();
+        Holder<Enchantment> holder = entry.getKey();
         int level = Math.max(1, entry.getIntValue());
 
-        // isTreasureOnly() is on the Enchantment value directly in 1.20.5+
-        boolean isTreasure = enchantment.isTreasureOnly();
+        // 1.21+: treasure check via tag instead of isTreasureOnly()
+        boolean isTreasure = holder.is(EnchantmentTags.TREASURE);
         boolean useMax = config.priceMode == VillagerBargainsConfig.PriceMode.MAXIMUM;
 
         int base = useMax ? (2 + 8 * level) : (2 + 3 * level);
