@@ -6,7 +6,6 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -19,17 +18,19 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into AbstractVillager#updateTrades via @Mixin(AbstractVillager.class).
+ * Hooks into AbstractVillager#updateTrades.
  *
- * In MC 26.1.x the Villager class moved to npc.villager.Villager but
- * the trade list (MerchantOffers offers) and updateTrades() both live
- * on AbstractVillager, which has NOT moved. Shadowing the field directly
- * avoids any getOffers() rename issues across MC versions.
+ * Both AbstractVillager and Villager moved to npc.villager.* in MC 26.1.x.
+ * We use targets strings (resolved at runtime) so javac never needs to
+ * see the classes on the compile classpath.
+ *
+ * The MerchantOffers field is shadowed by name ("offers") which is stable
+ * across MC versions and avoids shadowing a renamed getter method.
  */
-@Mixin(AbstractVillager.class)
+@Mixin(targets = "net.minecraft.world.entity.npc.villager.AbstractVillager")
 public abstract class VillagerTradesMixin {
 
-    // Shadow the field — always called "offers" on AbstractVillager.
+    // "offers" is the Mojang-mapped field name on AbstractVillager.
     @Shadow protected MerchantOffers offers;
 
     @Inject(method = "updateTrades", at = @At("TAIL"))
