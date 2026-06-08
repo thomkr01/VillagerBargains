@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -21,10 +22,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Injects at TAIL of Villager#updateTrades(ServerLevel).
  *
- * Matching strategy (no profession needed, all O(1)):
- *   1. Enchanted book -> match by enchantment ResourceLocation (namespace:path)
- *   2. Sell trades    -> match by result item name via RESULT_REGISTRY
- *   3. Buy trades     -> match by cost item name via RESULT_REGISTRY
+ * Matching strategy (all O(1)):
+ *   1. Enchanted book -> match by enchantment ResourceLocation via ResourceKey.location()
+ *   2. Sell trades    -> match by result item path via BuiltInRegistries.ITEM.getKey()
+ *   3. Buy trades     -> match by cost item path  via BuiltInRegistries.ITEM.getKey()
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
@@ -58,36 +59,36 @@ public abstract class VillagerTradesMixin {
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book: use ResourceLocation directly — no string parsing.
+        // 1. Enchanted book: get enchantment ID via ResourceKey.location() — no string parsing.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
-                    // location() gives us a ResourceLocation — toString() is "namespace:path"
-                    // exactly matching our registry key format "enchanted_book:minecraft:power"
+                    // ResourceKey.location() returns the ResourceLocation directly.
+                    // toString() on a ResourceLocation is "namespace:path" — reliable.
                     ResourceLocation loc = keyOpt.get().location();
-                    String enchId = loc.getNamespace() + ":" + loc.getPath();
+                    String enchId = loc.toString(); // e.g. "minecraft:power"
                     return VanillaTrades.getByBook("enchanted_book:" + enchId);
                 }
             }
             return null;
         }
 
-        // 2. Sell trade: result is the unique item the player receives.
+        // 2. Sell trade: match by result item registry path.
         if (!result.isEmpty()) {
-            ResourceLocation loc = result.getItem().arch$registryName();
+            ResourceLocation loc = BuiltInRegistries.ITEM.getKey(result.getItem());
             if (loc != null) {
                 TradeDefinition def = VanillaTrades.getByResultItem(loc.getPath());
                 if (def != null) return def;
             }
         }
 
-        // 3. Buy trade: result is emerald, match by cost item instead.
+        // 3. Buy trade: result is emerald, match by cost item registry path.
         ItemStack costA = offer.getBaseCostA();
         if (!costA.isEmpty()) {
-            ResourceLocation loc = costA.getItem().arch$registryName();
+            ResourceLocation loc = BuiltInRegistries.ITEM.getKey(costA.getItem());
             if (loc != null) {
                 return VanillaTrades.getByResultItem(loc.getPath());
             }
