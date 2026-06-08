@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -18,24 +19,25 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into Villager#updateTrades.
+ * Hooks into AbstractVillager#updateTrades via @Mixin(AbstractVillager.class).
  *
- * In MC 26.1.2, Villager moved to net.minecraft.world.entity.npc.villager.Villager
- * (extra 'villager' sub-package). We use @Mixin(targets) so the string is resolved
- * at runtime and not by javac at compile time.
+ * In MC 26.1.x the Villager class moved to npc.villager.Villager but
+ * the trade list (MerchantOffers offers) and updateTrades() both live
+ * on AbstractVillager, which has NOT moved. Shadowing the field directly
+ * avoids any getOffers() rename issues across MC versions.
  */
-@Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
+@Mixin(AbstractVillager.class)
 public abstract class VillagerTradesMixin {
 
-    @Shadow public abstract MerchantOffers getOffers();
+    // Shadow the field — always called "offers" on AbstractVillager.
+    @Shadow protected MerchantOffers offers;
 
     @Inject(method = "updateTrades", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
-        MerchantOffers offers = this.getOffers();
-        if (offers == null || offers.isEmpty()) return;
+        if (this.offers == null || this.offers.isEmpty()) return;
 
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        for (MerchantOffer offer : offers) {
+        for (MerchantOffer offer : this.offers) {
             applyPrice(offer, config);
         }
     }
@@ -58,7 +60,7 @@ public abstract class VillagerTradesMixin {
     }
 
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        // Step 1: enchanted book - match by sell enchantment ID
+        // Step 1: enchanted book — match by sell enchantment ID
         ItemStack result = offer.getResult();
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
@@ -69,14 +71,13 @@ public abstract class VillagerTradesMixin {
                     String keyStr = keyOpt.get().toString();
                     int sep = keyStr.lastIndexOf(" / ");
                     String enchId = sep >= 0 ? keyStr.substring(sep + 3, keyStr.length() - 1) : keyStr;
-                    String sellKey = "enchanted_book:" + enchId;
-                    TradeDefinition def = VanillaTrades.getByBook(sellKey);
+                    TradeDefinition def = VanillaTrades.getByBook("enchanted_book:" + enchId);
                     if (def != null) return def;
                 }
             }
         }
 
-        // Step 2: all other trades - match by buy item name
+        // Step 2: all other trades — match by buy item name
         String itemId   = offer.getBaseCostA().getItem().toString();
         int colon       = itemId.lastIndexOf(':');
         String itemName = colon >= 0 ? itemId.substring(colon + 1) : itemId;
