@@ -10,7 +10,6 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
-import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,17 +17,21 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Optional;
-
 /**
  * Intercepts villager trade generation at TAIL of updateTrades.
- * Replaces each MerchantOffer with a new one whose baseCostA count is locked
- * to our configured price at construction time — since baseCostA is final.
+ * Replaces each MerchantOffer with a fresh one whose costA count
+ * is our configured price, locked at construction time.
+ *
+ * MC 26.1.x (official Mojang mappings): MerchantOffer fields are raw
+ * ItemStack — no ItemCost wrapper.
+ * Constructor: MerchantOffer(ItemStack costA, ItemStack costB, ItemStack result,
+ *                            int uses, int maxUses, int xp, float priceMultiplier)
  */
 @Mixin(Villager.class)
 public abstract class VillagerTradesMixin extends AbstractVillager {
 
-    public VillagerTradesMixin(EntityType<? extends AbstractVillager> type, net.minecraft.world.level.Level level) {
+    public VillagerTradesMixin(EntityType<? extends AbstractVillager> type,
+                               net.minecraft.world.level.Level level) {
         super(type, level);
     }
 
@@ -50,30 +53,35 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
     }
 
     /**
-     * Builds a new MerchantOffer identical to the original but with our price
-     * locked into baseCostA at construction. Returns null if not in registry.
+     * Returns a new MerchantOffer with our configured price as costA count.
+     * Returns null if the trade is not in our registry (leave unchanged).
      */
     private static MerchantOffer buildRepriced(MerchantOffer original) {
         int price = resolvePrice(original);
         if (price < 0) {
-            ModLogger.get().info("[VillagerBargains Lookup] Trade '{}' not in registry, leaving unchanged.",
+            ModLogger.get().info("[VillagerBargains Lookup] '{}' not in registry, leaving unchanged.",
                     describeResult(original.getResult()));
             return null;
         }
         price = Math.max(1, Math.min(64, price));
-        int oldPrice = original.getBaseCostA().count();
+        int oldPrice = original.getBaseCostA().getCount();
 
-        // baseCostA is final — we must construct a fresh offer with our price.
+        // Build replacement costA with our price; keep the item the same.
+        ItemStack newCostA = original.getBaseCostA().copyWithCount(price);
+
+        // costB: use EMPTY if not present (vanilla uses empty ItemStack for no second cost).
+        ItemStack costB = original.getCostB().isEmpty() ? ItemStack.EMPTY : original.getCostB().copy();
+
         MerchantOffer fresh = new MerchantOffer(
-                new ItemCost(original.getBaseCostA().item(), price),
-                original.getCostB(),           // Optional<ItemCost> — unchanged
+                newCostA,
+                costB,
                 original.getResult().copy(),
                 original.getUses(),
                 original.getMaxUses(),
                 original.getXp(),
                 original.getPriceMultiplier()
         );
-        // Zero out demand and reputation modifiers so the price stays exact.
+        // Prevent reputation/demand from shifting the price after construction.
         fresh.setSpecialPriceDiff(0);
 
         ModLogger.get().info("[VillagerBargains Repriced] '{}' : {} -> {} emeralds",
@@ -81,11 +89,11 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
         return fresh;
     }
 
-    /** Resolves configured price. Returns -1 if not in registry. */
+    /** Resolves configured price for an offer. Returns -1 if not in registry. */
     private static int resolvePrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // Enchanted book
+        // Enchanted book path
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
@@ -101,24 +109,23 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
             return -1;
         }
 
-        // Normal trade — try result item id first
+        // Normal trade — try result item id
         String resultId = itemId(result);
         int price = PriceResolver.resolve(resultId);
         if (price >= 0) return price;
 
-        // Fallback: try the cost item id
-        String costId = itemId(offer.getBaseCostA().item().value().asItem().toString());
+        // Fallback: try costA item id
+        String costId = itemId(offer.getBaseCostA());
         price = PriceResolver.resolve(costId);
         if (price < 0)
-            ModLogger.get().info("[VillagerBargains Lookup] result='{}' cost='{}' not in registry.", resultId, costId);
+            ModLogger.get().info("[VillagerBargains Lookup] result='{}' costA='{}' not in registry.",
+                    resultId, costId);
         return price;
     }
 
     private static String itemId(ItemStack stack) {
-        return itemId(stack.getItem().toString());
-    }
-
-    private static String itemId(String raw) {
+        if (stack.isEmpty()) return "empty";
+        String raw = stack.getItem().toString();
         int i = raw.lastIndexOf(':');
         return i >= 0 ? raw.substring(i + 1) : raw;
     }
