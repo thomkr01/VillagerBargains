@@ -1,0 +1,13 @@
+plugins {
+    id 'groovy-gradle-plugin'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Gson is available transitively via Fabric Loom on the main project,
+    // but buildSrc runs without Loom — so we include it explicitly here.
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
