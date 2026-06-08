@@ -5,6 +5,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -19,39 +20,44 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
 
+    /** Fires when a villager generates new trades (level-up or fresh spawn). */
     @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
+        reapplyAllOffers();
+    }
+
+    /** Fires when a villager is loaded from disk — catches pre-existing villagers. */
+    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", at = @At("TAIL"))
+    private void villagerbargains$onLoad(CompoundTag tag, CallbackInfo ci) {
+        reapplyAllOffers();
+    }
+
+    private void reapplyAllOffers() {
         MerchantOffers offers = ((Merchant)(Object)this).getOffers();
         if (offers == null || offers.isEmpty()) return;
-
         for (MerchantOffer offer : offers) {
             applyPrice(offer);
         }
     }
 
     /**
-     * Sets the desired price on the offer and neutralises MC's demand/reputation
-     * modifiers so the displayed price equals exactly our desired value.
+     * Sets our desired price and zeroes MC's demand/reputation modifiers.
      *
      * MC's displayed price formula (MerchantOffer#getAdjustedCostA):
      *   max(1, baseCostA + specialPriceDiff + floor(baseCostA * priceMultiplier * demand))
      * After zeroing demand and specialPriceDiff:
-     *   max(1, desiredPrice + 0 + 0) = desiredPrice  (assuming desired >= 1)
+     *   max(1, desired + 0 + 0) = desired
      */
     private static void applyPrice(MerchantOffer offer) {
         int desired = resolveDesiredPrice(offer);
         if (desired < 0) return;
 
-        // Clamp to valid range: 1..64
         desired = Math.max(1, Math.min(64, desired));
 
         ItemStack costA   = offer.getBaseCostA();
         int       current = costA.getCount();
 
-        // Set base cost.
         costA.setCount(desired);
-
-        // Zero demand and specialPriceDiff so MC's formula outputs exactly 'desired'.
         ((MerchantOfferAccessor) offer).setDemand(0);
         offer.setSpecialPriceDiff(0);
 
@@ -67,7 +73,7 @@ public abstract class VillagerTradesMixin {
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var entry   = enchantments.entrySet().iterator().next();
+                var    entry   = enchantments.entrySet().iterator().next();
                 String enchId  = entry.getKey().getRegisteredName();
                 int    level   = entry.getValue();
                 return PriceResolver.resolveBook("enchanted_book:" + enchId, level);
