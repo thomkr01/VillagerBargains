@@ -14,6 +14,6 @@ public final class VillagerBargainsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        ModLogger.get().info("VillagerBargains loaded. Global price mode: {}", config.globalPriceMode);
+        ModLogger.get().info("[VillagerBargains Init] Mod loaded. Global price mode: {}", config.globalPriceMode);
     }
 }
