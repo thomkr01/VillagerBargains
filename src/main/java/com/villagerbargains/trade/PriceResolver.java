@@ -21,7 +21,7 @@ import java.util.Map;
  * MINIMUM value for every trade type:
  *
  *  - For normal trades: uses vanillaMin from TradeDefinition.
- *  - For librarian enchanted books: uses a per‑enchantment, per‑level
+ *  - For librarian enchanted books: uses a per-enchantment, per-level
  *    minimum table where provided, falling back to Mojang's documented
  *    minimum formula based on level and treasure status.
  *
@@ -34,41 +34,43 @@ public final class PriceResolver {
     /**
      * Manual override table for enchanted book minimum prices.
      *
-     * Key:   enchantment id string (e.g. "minecraft:depth_strider").
-     * Value: int[] of per‑level minimum emerald costs, index = level‑1.
+     * Key:   enchantment registry id string (e.g. "minecraft:depth_strider").
+     * Value: int[] of per-level minimum emerald costs, index = level-1.
      *
-     * If an entry exists and contains a positive value for the requested
-     * level, that value is used instead of the formula. This keeps the
-     * implementation strictly data‑driven and easy to adjust for new
-     * Minecraft versions or community‑discovered edge cases.
+     * If an entry exists and contains a positive value for the requested level,
+     * that value is used instead of the fallback formula.
+     *
+     * HOW TO ADD AN OVERRIDE:
+     *   ENCHANT_MIN_OVERRIDES.put("minecraft:enchant_name", new int[] { lvl1, lvl2, lvl3 });
+     * Leave array shorter than max level and the formula will handle remaining levels.
      */
     private static final Map<String, int[]> ENCHANT_MIN_OVERRIDES = new HashMap<>();
 
     static {
-        // Examples — these currently match the vanilla formula but are here
-        // to illustrate how to override specific enchants/levels if Mojang
-        // introduces exceptions.
-        //
-        // Non‑treasure, up to level 3
+        // Non-treasure, up to level 3 — these match the formula but are explicit for clarity.
         ENCHANT_MIN_OVERRIDES.put("minecraft:depth_strider", new int[] { 5, 8, 11 });
         // Treasure, level 1 only
-        ENCHANT_MIN_OVERRIDES.put("minecraft:mending",        new int[] { 10 });
+        ENCHANT_MIN_OVERRIDES.put("minecraft:mending",       new int[] { 10 });
         // Add more entries here as needed, one line per enchantment id.
     }
 
+    // ── Public API ────────────────────────────────────────────────────────────
+
     /**
-     * Entry point for callers that don't have a concrete MerchantOffer
-     * (e.g. trade list injection before offers are created).
+     * Resolves the minimum price for a non-book trade.
+     * Returns the vanilla minimum from the TradeDefinition, or -1 if mod is disabled.
      */
     public static int resolve(TradeDefinition def, VillagerBargainsConfig config) {
         return resolve(null, def, config);
     }
 
     /**
-     * @param offer   the concrete merchant offer (needed for enchanted books); may be null
-     * @param def     vanilla trade definition holding min/max values; may be null for enchanted books
-     * @param config  the loaded VillagerBargainsConfig
-     * @return final price, or -1 if the mod is disabled
+     * Resolves the minimum price for any trade.
+     *
+     * @param offer   the concrete merchant offer; needed for enchanted books. May be null.
+     * @param def     vanilla trade definition with min/max; may be null for enchanted books.
+     * @param config  the loaded mod config.
+     * @return the desired price, or -1 if the mod is disabled.
      */
     public static int resolve(MerchantOffer offer, TradeDefinition def, VillagerBargainsConfig config) {
         if (!config.enabled) return -1;
@@ -79,59 +81,65 @@ public final class PriceResolver {
 
         if (def == null) return -1;
 
-        // Non-book trades: always use the vanilla MINIMUM amount.
+        // All non-book trades: force vanilla minimum price.
         return def.vanillaMin();
     }
 
     // ── Enchanted book pricing ────────────────────────────────────────────────
 
     /**
-     * Official librarian minimum price for enchanted books, with the ability
-     * to override specific enchantments and levels via ENCHANT_MIN_OVERRIDES.
+     * Returns the minimum emerald cost for an enchanted book trade.
      *
-     * Fallback formula when no override exists:
-     *  - Non-treasure:  min = 3 * level + 2
-     *  - Treasure:      min = 2 * (3 * level + 2)
+     * Resolution order:
+     *   1. Manual override in ENCHANT_MIN_OVERRIDES for this enchantment + level.
+     *   2. Fallback formula: non-treasure = 3*level+2, treasure = 2*(3*level+2).
+     *
+     * Result is clamped to [1, 64].
      */
     private static int resolveEnchantedBookPrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
-
         ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
+
         if (enchantments == null || enchantments.isEmpty()) {
-            // No enchantment data — fall back to cheapest possible non‑treasure L1.
-            return 5;
+            return 5; // Cheapest valid non-treasure L1 price.
         }
 
-        var entry = enchantments.entrySet().iterator().next();
+        var entry  = enchantments.entrySet().iterator().next();
         Holder<Enchantment> holder = entry.getKey();
         int level = Math.max(1, entry.getIntValue());
 
         String enchantId = getEnchantmentId(holder);
 
-        // 1) Try explicit per‑enchant, per‑level override.
         int override = getOverrideMinPrice(enchantId, level);
         int price;
         if (override > 0) {
+            // 1) Explicit per-enchant, per-level override wins.
             price = override;
         } else {
-            // 2) Fallback to formula based on level + treasure status.
+            // 2) Fallback formula based on vanilla librarian pricing.
             boolean isTreasure = holder.is(EnchantmentTags.TREASURE);
-            price = 3 * level + 2; // vanilla minimum for non‑treasure
-            if (isTreasure) {
-                price *= 2;
-            }
+            price = 3 * level + 2;
+            if (isTreasure) price *= 2;
         }
 
-        // Clamp to the valid emerald trade range.
         return Math.max(1, Math.min(64, price));
     }
 
-    private static String getEnchantmentId(Holder<Enchantment> holder) {
-        if (holder == null) return "";
-        Enchantment enchantment = holder.value();
-        if (enchantment == null) return "";
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
-        Object key = BuiltInRegistries.ENCHANTMENT.getKey(enchantment);
+    /**
+     * Returns the namespaced registry id string for an enchantment holder,
+     * e.g. "minecraft:mending".
+     *
+     * Uses BuiltInRegistries.ENCHANTMENT (the official static registry for
+     * built-in enchantments, available in both Mojang mappings for 26.1.x
+     * and Yarn mappings for 1.19.3+).
+     */
+    private static String getEnchantmentId(Holder<Enchantment> holder) {
+        if (holder == null || holder.value() == null) return "";
+        // BuiltInRegistries.ENCHANTMENT.getKey() is the canonical way to get
+        // the ResourceLocation (namespaced id) for a built-in enchantment.
+        var key = BuiltInRegistries.ENCHANTMENT.getKey(holder.value());
         return key != null ? key.toString() : "";
     }
 
