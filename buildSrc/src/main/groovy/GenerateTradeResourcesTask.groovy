@@ -1,38 +1,37 @@
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
-import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 
 /**
- * Gradle task: reads godrollmod.json (or uses defaults) and writes
+ * Gradle task: reads villagerbargains.json (or uses defaults) and writes
  * one JSON file per registered vanilla trade into the output directory.
  *
  * Wired in build.gradle:
- *   tasks.named('processResources').configure { dependsOn(generateTradeResources) }
+ *   processResources.dependsOn('generateTradeResources')
  *
  * Modular design:
- *   - TRADE_REGISTRY : the single source of truth for vanilla min/max prices.
- *   - PriceMode      : mirrors the runtime enum — change names here if the config format changes.
- *   - buildJson()    : the only method that knows what the JSON fragment looks like.
+ *   - TRADE_REGISTRY : the only place to edit when Minecraft changes trade ranges.
+ *   - PriceMode      : mirrors VillagerBargainsConfig.PriceMode.
+ *   - buildJson()    : the only method that knows the villager_trade JSON schema.
  *
  * To update for a new Minecraft version: edit TRADE_REGISTRY below.
  */
-@CompileStatic
 abstract class GenerateTradeResourcesTask extends DefaultTask {
 
     // ── Output directory (wired to src/main/resources in build.gradle) ─────────
     @OutputDirectory
     abstract DirectoryProperty getOutputDir()
 
-    // ── Optional path to a pre-existing godrollmod.json ────────────────────────
+    // ── Optional path to a pre-existing villagerbargains.json ────────────────
     @Optional
     @InputFile
     abstract Property<File> getConfigFile()
 
-    // ── Vanilla trade registry: id → [min, max] ────────────────────────────────
+    // ── Vanilla trade registry: id → [min, max] ────────────────────────────
     // THIS IS THE ONLY SECTION TO EDIT WHEN MINECRAFT CHANGES TRADE RANGES.
     private static final Map<String, int[]> TRADE_REGISTRY = [
         // Armorer
@@ -198,32 +197,31 @@ abstract class GenerateTradeResourcesTask extends DefaultTask {
         'minecraft:weaponsmith/level_5/diamond_sword_sell': [13, 17] as int[],
     ]
 
-    // ── Price mode enum (mirrors VillagerBargainsConfig.PriceMode) ────────────
+    // ── Price mode enum (mirrors VillagerBargainsConfig.PriceMode) ───────────
     enum PriceMode { MINIMUM, MAXIMUM, CUSTOM }
 
-    // ── Gson instance ─────────────────────────────────────────────────────────
-    private static final def GSON = new GsonBuilder().setPrettyPrinting().create()
+    // ── Gson ────────────────────────────────────────────────────────────────
+    // Explicitly typed as Gson (not def) so static methods can reference it
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create()
 
-    // ── Main task action ──────────────────────────────────────────────────────
+    // ── Main task action ─────────────────────────────────────────────────────
     @TaskAction
     void generate() {
-        // 1. Read config (fall back to defaults if file doesn’t exist yet)
-        def cfg = readConfig()
-        def globalMode        = cfg.globalPriceMode  as PriceMode
-        def globalCustomPrice = cfg.globalCustomPrice as int
+        Map cfg               = readConfig()
+        PriceMode globalMode  = cfg.globalPriceMode as PriceMode
+        int globalCustomPrice = cfg.globalCustomPrice as int
         Map<String, Map> perTrade = (cfg.perTradePrices ?: [:]) as Map<String, Map>
 
         int written = 0
-        for (def entry : TRADE_REGISTRY.entrySet()) {
+        for (Map.Entry<String, int[]> entry : TRADE_REGISTRY.entrySet()) {
             String tradeId = entry.key
             int    vMin    = entry.value[0]
             int    vMax    = entry.value[1]
 
-            // 2. Determine mode + raw price
             PriceMode mode
             int rawPrice
             if (perTrade.containsKey(tradeId)) {
-                def override = perTrade[tradeId]
+                Map override = perTrade[tradeId] as Map
                 mode     = (override.priceMode ?: 'MINIMUM') as PriceMode
                 rawPrice = (override.customPrice ?: 1) as int
             } else {
@@ -231,33 +229,29 @@ abstract class GenerateTradeResourcesTask extends DefaultTask {
                 rawPrice = globalCustomPrice
             }
 
-            // 3. Resolve final price
-            int price = switch (mode) {
-                case PriceMode.MINIMUM -> vMin
-                case PriceMode.MAXIMUM -> vMax
-                case PriceMode.CUSTOM  -> Math.max(vMin, Math.min(vMax, rawPrice))
+            int price
+            switch (mode) {
+                case PriceMode.MINIMUM: price = vMin; break
+                case PriceMode.MAXIMUM: price = vMax; break
+                default:                price = Math.max(vMin, Math.min(vMax, rawPrice))
             }
 
-            // 4. Build JSON fragment
-            String json = buildJson(price)
-
-            // 5. Write file to output directory
             String relPath = tradeIdToPath(tradeId)
             File   outFile = outputDir.get().file(relPath).asFile
             outFile.parentFile.mkdirs()
-            outFile.text = json
+            outFile.text = buildJson(price)
             written++
         }
-        logger.lifecycle("[VillagerBargains] Generated {} trade override file(s).", written)
+        logger.lifecycle('[VillagerBargains] Generated {} trade override file(s).', written)
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Reads villagerbargains.json from the project’s config dir, or returns defaults. */
     private Map readConfig() {
         if (configFile.isPresent() && configFile.get().exists()) {
             try {
-                return GSON.fromJson(configFile.get().text, Map) as Map
+                Map parsed = GSON.fromJson(configFile.get().text, Map.class)
+                if (parsed != null) return parsed
             } catch (Exception e) {
                 logger.warn('[VillagerBargains] Could not parse config — using defaults: {}', e.message)
             }
@@ -267,23 +261,21 @@ abstract class GenerateTradeResourcesTask extends DefaultTask {
 
     /**
      * Builds the JSON fragment for a single trade override.
-     * Uses a constant number provider so the price is never randomised.
-     * Edit this method if Minecraft changes the villager_trade JSON schema.
+     * Edit only if Minecraft changes the villager_trade JSON schema.
      */
     private static String buildJson(int price) {
-        def wants = new JsonObject()
-        wants.addProperty('id', 'minecraft:emerald')
-        def countProvider = new JsonObject()
+        JsonObject countProvider = new JsonObject()
         countProvider.addProperty('type', 'minecraft:constant')
         countProvider.addProperty('value', price)
+        JsonObject wants = new JsonObject()
+        wants.addProperty('id', 'minecraft:emerald')
         wants.add('count', countProvider)
-        def root = new JsonObject()
+        JsonObject root = new JsonObject()
         root.add('wants', wants)
         return GSON.toJson(root)
     }
 
     /**
-     * Converts a trade ID to a resource path inside the jar.
      * "minecraft:armorer/level_1/coal_buy"
      *   → "data/minecraft/villager_trade/armorer/level_1/coal_buy.json"
      */
