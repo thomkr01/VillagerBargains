@@ -3,7 +3,7 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.EnchantmentTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -128,20 +128,11 @@ public final class PriceResolver {
 
     private static String getEnchantmentId(Holder<Enchantment> holder) {
         if (holder == null) return "";
+        Enchantment enchantment = holder.value();
+        if (enchantment == null) return "";
 
-        // Most common case: direct reference with a registry name.
-        if (holder.value() != null && holder.value().builtInRegistryHolder() != null) {
-            ResourceLocation id = holder.value().builtInRegistryHolder().key().location();
-            if (id != null) {
-                return id.toString();
-            }
-        }
-
-        // Fallback: use the holder's key string, which contains the id.
-        return holder.unwrapKey()
-                .map(key -> key.location())
-                .map(ResourceLocation::toString)
-                .orElse("");
+        Object key = BuiltInRegistries.ENCHANTMENT.getKey(enchantment);
+        return key != null ? key.toString() : "";
     }
 
     private static int getOverrideMinPrice(String enchantId, int level) {
