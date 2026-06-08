@@ -8,13 +8,14 @@ group = project.maven_group
 archivesBaseName = project.archive_base_name
 
 repositories {
+    // Add mod repositories here if needed
 }
 
 loom {
     splitEnvironmentSourceSets()
 
     mods {
-        "bargainvillage" {
+        "villagerbargains" {
             sourceSet sourceSets.main
             sourceSet sourceSets.client
         }
@@ -30,7 +31,6 @@ dependencies {
 processResources {
     def version = project.version
     inputs.property "version", version
-
     filesMatching("fabric.mod.json") {
         expand "version": version
     }
@@ -49,7 +49,6 @@ java {
 jar {
     def projectName = project.name
     inputs.property "projectName", projectName
-
     from("LICENSE") {
         rename { "${it}_$projectName" }
     }
@@ -62,5 +61,6 @@ publishing {
         }
     }
     repositories {
+        // Add publishing repositories here if needed
     }
 }

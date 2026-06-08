@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "id": "bargainvillage",
+  "id": "villagerbargains",
   "version": "${version}",
-  "name": "BargainVillage",
-  "description": "A Fabric mod that guarantees villagers the cheapest possible trade prices, configurable per trade.",
+  "name": "VillagerBargains",
+  "description": "Guarantees villager trades at the cheapest possible price. Configurable per-trade via a JSON config file.",
   "authors": ["Tommy"],
   "contact": {},
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.bargainvillage.BargainVillageMod"
+      "com.villagerbargains.VillagerBargainsMod"
     ]
   },
   "depends": {
