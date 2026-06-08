@@ -51,7 +51,7 @@ public final class InMemoryResourcePack extends AbstractPackResources {
                 String relative = path.substring(base.length());
                 if (relative.startsWith(prefix)) {
                     output.accept(
-                        Identifier.of(namespace, relative),
+                        new Identifier(namespace, relative),
                         () -> new ByteArrayInputStream(entry.getValue())
                     );
                 }
