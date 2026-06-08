@@ -7,19 +7,15 @@ import net.fabricmc.api.ModInitializer;
 /**
  * Mod entrypoint.
  *
- * Trade price overrides are pre-generated at build time by the Gradle
- * `generateTradeResources` task and bundled as static data files inside
- * the mod jar under data/minecraft/villager_trade/...
+ * Trade price overrides are applied at RUNTIME via a Mixin on the villager
+ * trade-offer generation path. Only newly generated trade offers are affected;
+ * offers already stored in a villager's NBT data are never touched.
  *
- * Fabric loads those files automatically as part of the mod’s built-in
- * data pack — no runtime pack injection or ServerLifecycleEvents needed.
+ * Works server-side only in multiplayer (clients do not need this mod).
+ * Works in singleplayer because the client runs the integrated server.
  *
- * The only work done here is:
- *   1. Loading / creating the config file so it exists on first launch.
- *   2. Logging the active price mode for diagnostics.
- *
- * To update trade ranges for a new MC version: edit VanillaTrades.java,
- * then re-run `./gradlew generateTradeResources build`.
+ * Config: config/villagerbargains.json (created on first launch).
+ * To update trade ranges for a new MC version: edit VanillaTrades.java only.
  */
 public final class VillagerBargainsMod implements ModInitializer {
 
@@ -31,8 +27,5 @@ public final class VillagerBargainsMod implements ModInitializer {
         ModLogger.get().info(
                 "[VillagerBargains] Loaded. Global price mode: {}",
                 config.globalPriceMode);
-        ModLogger.get().info(
-                "[VillagerBargains] Trade overrides are bundled as static data files. "
-                + "Re-run generateTradeResources + build to apply config changes.");
     }
 }

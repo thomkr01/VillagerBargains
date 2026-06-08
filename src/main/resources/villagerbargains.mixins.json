@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.villagerbargains.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "TradeOfferListMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -3,28 +3,35 @@ package com.villagerbargains.trade;
 import com.villagerbargains.config.VillagerBargainsConfig;
 
 /**
- * Combines a TradeDefinition with the active config to produce
- * the final clamped price for a given trade.
+ * Resolves the final clamped price for a trade given a config.
+ *
+ * Rules:
+ *  - MINIMUM : vanilla minimum (godroll) — never goes lower than vanilla min
+ *  - MAXIMUM : vanilla maximum
+ *  - CUSTOM  : user-supplied value, clamped to [vanillaMin, vanillaMax]
+ *
+ * This class is the single source of price-resolution logic.
+ * If the pricing rules change, edit only this class.
  */
 public final class PriceResolver {
     private PriceResolver() {}
 
     /**
-     * @return the resolved price, or -1 if tradeId is not in VanillaTrades.
+     * @param tradeId  e.g. "minecraft:armorer/level_1/coal_buy"
+     * @param config   the loaded VillagerBargainsConfig
+     * @return final price, always within [def.vanillaMin(), def.vanillaMax()]
      */
-    public static int resolve(String tradeId) {
+    public static int resolve(String tradeId, VillagerBargainsConfig config) {
         TradeDefinition def = VanillaTrades.get(tradeId);
-        if (def == null) return -1;
+        if (def == null) return -1; // unknown trade — caller should skip
 
-        VillagerBargainsConfig cfg = VillagerBargainsConfig.getInstance();
-        VillagerBargainsConfig.PriceMode mode = cfg.effectivePriceMode(tradeId);
+        VillagerBargainsConfig.PriceMode mode  = config.effectivePriceMode(tradeId);
+        int customPrice                         = config.effectiveCustomPrice(tradeId);
 
-        int raw = switch (mode) {
+        return switch (mode) {
             case MINIMUM -> def.vanillaMin();
             case MAXIMUM -> def.vanillaMax();
-            case CUSTOM  -> cfg.effectiveCustomPrice(tradeId);
+            case CUSTOM  -> Math.max(def.vanillaMin(), Math.min(def.vanillaMax(), customPrice));
         };
-
-        return def.clamp(raw);
     }
 }

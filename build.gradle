@@ -28,23 +28,6 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
-// ── Trade resource generator ──────────────────────────────────────────────────
-tasks.register('generateTradeResources', GenerateTradeResourcesTask) {
-    outputDir = file('src/main/resources')
-    def cfgFile = file('config/villagerbargains.json')
-    if (cfgFile.exists()) {
-        configFile = cfgFile
-    }
-}
-
-// processResources always runs after generateTradeResources
-processResources.dependsOn('generateTradeResources')
-
-// sourcesJar is registered lazily by Loom/java plugin, so wire it up after evaluation
-afterEvaluate {
-    tasks.named('sourcesJar').configure { dependsOn('generateTradeResources') }
-}
-
 processResources {
     def version = project.version
     inputs.property "version", version
