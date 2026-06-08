@@ -1,161 +1,146 @@
 package com.villagerbargains.mixin;
 
 import com.villagerbargains.trade.PriceResolver;
-import com.villagerbargains.trade.TradeDefinition;
-import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
-import net.minecraft.world.item.trading.Merchant;
-import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
-public abstract class VillagerTradesMixin extends Entity {
+import java.util.Optional;
 
-    // Required by Entity superclass — never called directly.
-    public VillagerTradesMixin(EntityType<?> type, Level level) {
+/**
+ * Intercepts villager trade generation at TAIL of updateTrades.
+ * Replaces each MerchantOffer with a new one whose baseCostA is locked
+ * to our configured price at construction time.
+ * baseCostA is final in MerchantOffer, so mutation is not possible;
+ * we must build a fresh offer and swap it in.
+ */
+@Mixin(Villager.class)
+public abstract class VillagerTradesMixin extends AbstractVillager {
+
+    public VillagerTradesMixin(EntityType<? extends AbstractVillager> type, net.minecraft.world.level.Level level) {
         super(type, level);
     }
 
-    private boolean villagerbargains$applied = false;
-
-    /** Fires when a villager generates new trades (level-up or fresh spawn). */
-    @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
-    private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
-        ModLogger.get().info("[VillagerBargains TradeGen] Villager generated new trades, applying prices.");
-        villagerbargains$applied = false;
-        reapplyAllOffers();
-        villagerbargains$applied = true;
-    }
-
-    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V",
-            at = @At("TAIL"), require = 0)
-    private void villagerbargains$onLoad(CompoundTag tag, CallbackInfo ci) {
-        ModLogger.get().info("[VillagerBargains Load] Villager loaded from disk, will reprice on next tick.");
-        villagerbargains$applied = false;
-    }
-
-    /** Fallback: apply on first tick after load. Server-side only. */
-    @Inject(method = "tick()V", at = @At("HEAD"), require = 0)
-    private void villagerbargains$onTick(CallbackInfo ci) {
-        if (!villagerbargains$applied) {
-            if (this.level().isClientSide()) {
-                ModLogger.get().debug("[VillagerBargains Tick] Skipping reprice — client side.");
-                villagerbargains$applied = true;
-                return;
-            }
-            ModLogger.get().info("[VillagerBargains Tick] First server tick after load, applying prices.");
-            reapplyAllOffers();
-            villagerbargains$applied = true;
-        }
-    }
-
-    private void reapplyAllOffers() {
-        MerchantOffers offers = ((Merchant)(Object)this).getOffers();
+    @Inject(method = "updateTrades", at = @At("TAIL"))
+    private void villagerbargains$repriceOffers(ServerLevel serverLevel, CallbackInfo ci) {
+        MerchantOffers offers = this.getOffers();
         if (offers == null || offers.isEmpty()) {
-            ModLogger.get().info("[VillagerBargains Reprice] No offers found on this villager, skipping.");
+            ModLogger.get().info("[VillagerBargains UpdateTrades] No offers to reprice.");
             return;
         }
-        ModLogger.get().info("[VillagerBargains Reprice] Processing {} offer(s).", offers.size());
-        for (MerchantOffer offer : offers) {
-            applyPrice(offer);
+        ModLogger.get().info("[VillagerBargains UpdateTrades] Repricing {} offer(s).", offers.size());
+        for (int i = 0; i < offers.size(); i++) {
+            MerchantOffer original = offers.get(i);
+            MerchantOffer replaced = buildRepriced(original);
+            if (replaced != null) {
+                offers.set(i, replaced);
+            }
         }
     }
 
-    private static void applyPrice(MerchantOffer offer) {
-        int desired = resolveDesiredPrice(offer);
-        if (desired < 0) {
-            ModLogger.get().info("[VillagerBargains Reprice] Offer '{}' not in registry, skipping.",
-                    itemPath(offer.getResult()));
-            return;
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns a new MerchantOffer with the configured price locked in,
+     * or null if this offer is not in our registry (leave it unchanged).
+     */
+    private static MerchantOffer buildRepriced(MerchantOffer original) {
+        int price = resolvePrice(original);
+        if (price < 0) {
+            ModLogger.get().info("[VillagerBargains Lookup] Trade '{}' not in registry, leaving unchanged.",
+                    describeResult(original.getResult()));
+            return null;
         }
 
-        desired = Math.max(1, Math.min(64, desired));
+        price = Math.max(1, Math.min(64, price));
+        int oldPrice = original.getBaseCostA().count();
 
-        ItemStack costA   = offer.getBaseCostA();
-        int       current = costA.getCount();
+        // Build a fresh offer — baseCostA is final, so we cannot mutate it.
+        MerchantOffer fresh = new MerchantOffer(
+                new ItemCost(original.getBaseCostA().item(), price),
+                original.getCostB(),
+                original.getResult().copy(),
+                original.getUses(),
+                original.getMaxUses(),
+                original.getXp(),
+                original.getPriceMultiplier()
+        );
+        // Disable demand inflation permanently on this offer.
+        fresh.resetSpecialPriceDiff();
 
-        costA.setCount(desired);
-        ((MerchantOfferAccessor) offer).setDemand(0);
-        offer.setSpecialPriceDiff(0);
-
-        if (current != desired) {
-            logRepriced(offer, current, desired);
-        } else {
-            ModLogger.get().debug("[VillagerBargains Reprice] Offer '{}' already at correct price ({}).",
-                    itemPath(offer.getResult()), desired);
-        }
+        ModLogger.get().info("[VillagerBargains Repriced] '{}' : {} -> {} emeralds",
+                describeResult(original.getResult()), oldPrice, price);
+        return fresh;
     }
 
-    private static int resolveDesiredPrice(MerchantOffer offer) {
+    /** Resolves the configured price for an offer. Returns -1 if not found. */
+    private static int resolvePrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
+        // Enchanted book?
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var    entry  = enchantments.entrySet().iterator().next();
-                String enchId = entry.getKey().getRegisteredName();
-                int    level  = entry.getValue();
-                String key    = "enchanted_book:" + enchId;
-                int    price  = PriceResolver.resolveBook(key, level);
+                var entry  = enchantments.entrySet().iterator().next();
+                String id  = entry.getKey().getRegisteredName();
+                int    lvl = entry.getValue();
+                int price  = PriceResolver.resolveBook("enchanted_book:" + id, lvl);
                 if (price < 0) {
-                    ModLogger.get().info("[VillagerBargains Lookup] Book '{}' lvl {} not found in registry.",
-                            enchId, level);
+                    ModLogger.get().info("[VillagerBargains Lookup] Book '{}' lvl {} not in registry.", id, lvl);
                 }
                 return price;
             }
-            ModLogger.get().info("[VillagerBargains Lookup] Enchanted book has no stored enchantments, skipping.");
+            ModLogger.get().info("[VillagerBargains Lookup] Enchanted book has no stored enchantments.");
             return -1;
         }
 
-        TradeDefinition def = resolveNormalTrade(result, offer.getBaseCostA());
-        if (def == null) {
-            ModLogger.get().info("[VillagerBargains Lookup] Trade '{}' not found in registry.",
-                    itemPath(result));
+        // Normal trade — try result item first, then costA item.
+        String resultId = itemId(result);
+        int price = PriceResolver.resolve(resultId);
+        if (price >= 0) return price;
+
+        String costId = itemId(offer.getBaseCostA().item().value().asItem().toString());
+        price = PriceResolver.resolve(costId);
+        if (price < 0) {
+            ModLogger.get().info("[VillagerBargains Lookup] Normal trade result='{}' cost='{}' not in registry.",
+                    resultId, costId);
         }
-        return def != null ? PriceResolver.resolve(def.tradeId()) : -1;
+        return price;
     }
 
-    private static String itemPath(ItemStack stack) {
-        String s = stack.getItem().toString();
-        int i = s.lastIndexOf(':');
-        return i >= 0 ? s.substring(i + 1) : s;
+    private static String itemId(ItemStack stack) {
+        return itemId(stack.getItem().toString());
     }
 
-    private static TradeDefinition resolveNormalTrade(ItemStack result, ItemStack costA) {
-        if (!result.isEmpty()) {
-            TradeDefinition def = VanillaTrades.getByResultItem(itemPath(result));
-            if (def != null) return def;
-        }
-        if (!costA.isEmpty()) {
-            return VanillaTrades.getByResultItem(itemPath(costA));
-        }
-        return null;
+    private static String itemId(String raw) {
+        int i = raw.lastIndexOf(':');
+        return i >= 0 ? raw.substring(i + 1) : raw;
     }
 
-    private static void logRepriced(MerchantOffer offer, int from, int to) {
-        ItemStack result = offer.getResult();
+    private static String describeResult(ItemStack result) {
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enc = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enc != null && !enc.isEmpty()) {
                 var e = enc.entrySet().iterator().next();
-                ModLogger.get().info("[VillagerBargains Repriced] Book '{}' lvl {} : {} -> {} emeralds",
-                        e.getKey().getRegisteredName(), e.getValue(), from, to);
-                return;
+                return e.getKey().getRegisteredName() + " lvl " + e.getValue();
             }
+            return "enchanted_book (unknown)";
         }
-        ModLogger.get().info("[VillagerBargains Repriced] Trade '{}' : {} -> {} emeralds",
-                itemPath(result), from, to);
+        return itemId(result);
     }
 }
