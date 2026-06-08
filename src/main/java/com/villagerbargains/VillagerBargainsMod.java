@@ -22,10 +22,10 @@ public final class VillagerBargainsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        ModLogger.get().info("[VillagerBargains] Config loaded. Global price mode: {}", config.globalPriceMode);
+        ModLogger.get().info("VillagerBargains loaded. Global price mode: {}", config.globalPriceMode);
 
         Map<String, byte[]> overrides = GodRollResourcePack.buildAllOverrides();
-        ModLogger.get().info("[VillagerBargains] Generated {} trade price override(s).", overrides.size());
+        ModLogger.get().info("VillagerBargains: generated {} trade price override(s).", overrides.size());
 
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
             PackLocationInfo locationInfo = new PackLocationInfo(
@@ -61,7 +61,7 @@ public final class VillagerBargainsMod implements ModInitializer {
                 )
             );
 
-            ModLogger.get().info("[VillagerBargains] Trade override pack injected into server data repository.");
+            ModLogger.get().info("VillagerBargains: trade override pack injected into server data repository.");
         });
     }
 }

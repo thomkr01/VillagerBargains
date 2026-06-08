@@ -15,7 +15,8 @@ import java.util.Map;
 
 /**
  * Loads and saves config from config/villagerbargains.json.
- * To change price behaviour globally or per-trade, edit that file.
+ * Two pricing modes: MINIMUM (godroll, default) or MAXIMUM.
+ * To override per-trade, add entries to "perTradePrices".
  * To add new config fields: add a field here, update defaults below.
  */
 public final class VillagerBargainsConfig {
@@ -34,9 +35,6 @@ public final class VillagerBargainsConfig {
     @SerializedName("globalPriceMode")
     public PriceMode globalPriceMode = PriceMode.MINIMUM;
 
-    @SerializedName("globalCustomPrice")
-    public int globalCustomPrice = 1;
-
     /** Key: tradeId (e.g. "minecraft:librarian/level_1/enchanted_book") */
     @SerializedName("perTradePrices")
     public Map<String, TradeOverride> perTradePrices = new LinkedHashMap<>();
@@ -46,28 +44,18 @@ public final class VillagerBargainsConfig {
         /** Vanilla minimum price (godroll) — default */
         MINIMUM,
         /** Vanilla maximum price */
-        MAXIMUM,
-        /** Custom price, clamped to [vanillaMin, vanillaMax] */
-        CUSTOM
+        MAXIMUM
     }
 
     public static final class TradeOverride {
         @SerializedName("priceMode")
         public PriceMode priceMode = PriceMode.MINIMUM;
-
-        @SerializedName("customPrice")
-        public int customPrice = 1;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
     public PriceMode effectivePriceMode(String tradeId) {
         TradeOverride override = perTradePrices.get(tradeId);
         return override != null ? override.priceMode : globalPriceMode;
-    }
-
-    public int effectiveCustomPrice(String tradeId) {
-        TradeOverride override = perTradePrices.get(tradeId);
-        return override != null ? override.customPrice : globalCustomPrice;
     }
 
     // ── I/O ────────────────────────────────────────────────────────────────────

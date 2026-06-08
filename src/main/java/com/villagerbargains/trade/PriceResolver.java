@@ -4,13 +4,13 @@ import com.villagerbargains.config.VillagerBargainsConfig;
 
 /**
  * Combines a TradeDefinition with the active config to produce
- * the final clamped price for a given trade.
+ * the final price for a given trade.
  */
 public final class PriceResolver {
     private PriceResolver() {}
 
     /**
-     * @return the resolved price, or -1 if tradeId is not in VanillaTrades.
+     * @return the resolved price (vanillaMin or vanillaMax), or -1 if tradeId is not in VanillaTrades.
      */
     public static int resolve(String tradeId) {
         TradeDefinition def = VanillaTrades.get(tradeId);
@@ -19,12 +19,9 @@ public final class PriceResolver {
         VillagerBargainsConfig cfg = VillagerBargainsConfig.getInstance();
         VillagerBargainsConfig.PriceMode mode = cfg.effectivePriceMode(tradeId);
 
-        int raw = switch (mode) {
+        return switch (mode) {
             case MINIMUM -> def.vanillaMin();
             case MAXIMUM -> def.vanillaMax();
-            case CUSTOM  -> cfg.effectiveCustomPrice(tradeId);
         };
-
-        return def.clamp(raw);
     }
 }

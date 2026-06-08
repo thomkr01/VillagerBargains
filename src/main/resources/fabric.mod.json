@@ -3,7 +3,7 @@
   "id": "villagerbargains",
   "version": "${version}",
   "name": "VillagerBargains",
-  "description": "Guarantees villager trades at the cheapest possible price. Configurable per-trade via a JSON config file.",
+  "description": "Guarantees villager trades at MINIMUM or MAXIMUM price. Configurable per-trade via a JSON config file.",
   "authors": ["Tommy"],
   "contact": {},
   "license": "MIT",
