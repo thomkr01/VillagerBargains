@@ -11,6 +11,13 @@ import java.util.Map;
  * THIS IS THE ONLY FILE THAT NEEDS UPDATING WHEN MINECRAFT CHANGES TRADE RANGES.
  *
  * Normal trades:    register(map, "minecraft:<profession>/level_N/<name>", min, max)
+ *   Naming convention for <name>:
+ *     - Buy trades (player gives items):  "<item>_buy"  (result is always emerald)
+ *     - Sell trades (player gets items):  "<item>_sell" (result is the named item)
+ *   The last segment after the final '/' is used as the RESULT_REGISTRY key:
+ *     - "_sell" trades  → key = segment without "_sell" suffix  (the result item)
+ *     - "_buy"  trades  → key = segment without "_buy"  suffix  (the buy item)
+ *
  * Enchanted books:  registerBook(books, "minecraft:<enchantment_id>", min, max)
  *   — sellKey becomes "enchanted_book:minecraft:<enchantment_id>" internally
  *   — min/max are the emerald cost for that specific enchantment
@@ -19,13 +26,20 @@ import java.util.Map;
 public final class VanillaTrades {
     private VanillaTrades() {}
 
-    /** Primary registry: tradeId -> TradeDefinition (all normal trades). */
+    /** Primary registry: tradeId -> TradeDefinition. */
     private static final Map<String, TradeDefinition> REGISTRY;
 
     /**
-     * Secondary registry for enchanted books: sellKey -> TradeDefinition.
+     * Fast lookup by result item name (e.g. "iron_leggings", "bell", "bread").
+     * For sell trades this is the sold item; for buy trades this is the bought item.
+     * Built automatically from REGISTRY — no manual maintenance needed.
+     * Used by the mixin to match offers in O(1) without knowing the profession.
+     */
+    private static final Map<String, TradeDefinition> RESULT_REGISTRY;
+
+    /**
+     * Enchanted book registry: sellKey -> TradeDefinition.
      * Key format: "enchanted_book:minecraft:<enchantment_id>"
-     * Looked up by the SELL item enchantment, not the buy item.
      */
     private static final Map<String, TradeDefinition> BOOK_REGISTRY;
 
@@ -139,7 +153,7 @@ public final class VanillaTrades {
         register(map, "minecraft:leatherworker/level_4/turtle_shell_sell",  4,  8);
         register(map, "minecraft:leatherworker/level_5/saddle_sell",        8, 10);
 
-        // ── Librarian (non-book trades) ───────────────────────────────────────────────
+        // ── Librarian (non-book trades) ────────────────────────────────────────
         register(map, "minecraft:librarian/level_1/paper_buy",             24, 36);
         register(map, "minecraft:librarian/level_1/bookshelf_sell",         9, 12);
         register(map, "minecraft:librarian/level_2/book_buy",               8, 10);
@@ -151,9 +165,7 @@ public final class VanillaTrades {
         register(map, "minecraft:librarian/level_4/compass_sell",           4,  6);
         register(map, "minecraft:librarian/level_5/name_tag_sell",         20, 22);
 
-        // ── Librarian enchanted books — per-enchantment emerald cost ──────────────────────
-        // Matched by SELL enchantment, not buy item.
-        // Source: Minecraft Wiki — Librarian Trades, MC 1.21
+        // ── Librarian enchanted books ──────────────────────────────────────────
         registerBook(books, "minecraft:protection",            5, 19);
         registerBook(books, "minecraft:fire_protection",       5, 19);
         registerBook(books, "minecraft:feather_falling",       5, 19);
@@ -250,6 +262,23 @@ public final class VanillaTrades {
 
         REGISTRY      = Collections.unmodifiableMap(map);
         BOOK_REGISTRY = Collections.unmodifiableMap(books);
+
+        // Build RESULT_REGISTRY automatically from REGISTRY.
+        // Key = last segment of tradeId, stripped of "_sell" or "_buy" suffix.
+        Map<String, TradeDefinition> results = new LinkedHashMap<>();
+        for (TradeDefinition def : map.values()) {
+            String seg = def.tradeId().substring(def.tradeId().lastIndexOf('/') + 1);
+            String key;
+            if (seg.endsWith("_sell")) {
+                key = seg.substring(0, seg.length() - 5); // strip "_sell"
+            } else if (seg.endsWith("_buy")) {
+                key = seg.substring(0, seg.length() - 4); // strip "_buy"
+            } else {
+                key = seg;
+            }
+            results.putIfAbsent(key, def); // first entry wins for duplicates
+        }
+        RESULT_REGISTRY = Collections.unmodifiableMap(results);
     }
 
     // ── Registry helpers ───────────────────────────────────────────────────────
@@ -257,14 +286,17 @@ public final class VanillaTrades {
         map.put(id, new TradeDefinition(id, min, max));
     }
 
-    /** Registers an enchanted-book trade keyed by sell enchantment. */
     private static void registerBook(Map<String, TradeDefinition> books, String enchId, int min, int max) {
         String sellKey = "enchanted_book:" + enchId;
         books.put(sellKey, new TradeDefinition(sellKey, min, max, sellKey));
     }
 
-    public static TradeDefinition get(String tradeId)        { return REGISTRY.get(tradeId); }
-    public static TradeDefinition getByBook(String sellKey)  { return BOOK_REGISTRY.get(sellKey); }
-    public static Map<String, TradeDefinition> getAll()      { return REGISTRY; }
-    public static Map<String, TradeDefinition> getAllBooks()  { return BOOK_REGISTRY; }
+    /** Lookup by full tradeId. */
+    public static TradeDefinition get(String tradeId)           { return REGISTRY.get(tradeId); }
+    /** Lookup by enchanted book sell key. */
+    public static TradeDefinition getByBook(String sellKey)     { return BOOK_REGISTRY.get(sellKey); }
+    /** Lookup by result/buy item name (e.g. "iron_leggings", "coal"). O(1). */
+    public static TradeDefinition getByResultItem(String name)  { return RESULT_REGISTRY.get(name); }
+    public static Map<String, TradeDefinition> getAll()         { return REGISTRY; }
+    public static Map<String, TradeDefinition> getAllBooks()     { return BOOK_REGISTRY; }
 }
