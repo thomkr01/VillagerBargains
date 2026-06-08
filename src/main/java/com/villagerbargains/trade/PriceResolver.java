@@ -13,14 +13,12 @@ import net.minecraft.world.item.trading.MerchantOffer;
 /**
  * Resolves the final price for a trade.
  *
- * When the mod is enabled, trades are forced to either the MINIMUM or MAXIMUM
- * vanilla price depending on config.
+ * When the mod is enabled, trades are forced to the official vanilla
+ * MINIMUM value for every trade type:
  *
- *  - For normal trades: uses vanilla min or max count from TradeDefinition.
- *  - For librarian enchanted books: reproduces Minecraft's documented
- *    min/max price formula based on enchantment level and treasure status.
- *    The def parameter may be null for enchanted books — price is derived
- *    entirely from the enchantment, not from VanillaTrades.
+ *  - For normal trades: uses vanillaMin from TradeDefinition.
+ *  - For librarian enchanted books: uses Mojang's documented minimum
+ *    emerald cost formula based on level and treasure status.
  *
  * Keeping this as a dedicated class means price logic stays decoupled from
  * mixins and can be changed without touching villager injection code.
@@ -46,38 +44,32 @@ public final class PriceResolver {
         if (!config.enabled) return -1;
 
         if (offer != null && offer.getResult().is(Items.ENCHANTED_BOOK)) {
-            return resolveEnchantedBookPrice(offer, config);
+            return resolveEnchantedBookPrice(offer);
         }
 
         if (def == null) return -1;
 
-        // Non-book trades: use the configured price mode.
-        return config.priceMode == VillagerBargainsConfig.PriceMode.MAXIMUM
-                ? def.vanillaMax()
-                : def.vanillaMin();
+        // Non-book trades: always use the vanilla MINIMUM amount.
+        return def.vanillaMin();
     }
 
     // ── Enchanted book pricing ────────────────────────────────────────────────
 
     /**
-     * Reproduces Minecraft's enchanted book price formula for librarians.
+     * Official librarian minimum price for enchanted books:
      *
-     * In Minecraft 1.21+, enchantments are fully data-driven.
-     * "Treasure" is determined by the EnchantmentTags.TREASURE tag, not
-     * by a method on the Enchantment class.
+     *  - Non-treasure:  min = 3 * level + 2
+     *  - Treasure:      min = 2 * (3 * level + 2)
      *
-     * Formula (no TradeDefinition needed — price is enchantment-specific):
-     *   MINIMUM base = 2 + 3 * level
-     *   MAXIMUM base = 2 + 8 * level
-     *   Treasure enchantments are doubled.
-     *   Result is clamped to [1, 64].
+     * This matches the minimum bounds from Mojang's documented emerald
+     * price ranges for librarian offers (e.g. L1: 5, L2: 8, L3: 11...).
      */
-    private static int resolveEnchantedBookPrice(MerchantOffer offer, VillagerBargainsConfig config) {
+    private static int resolveEnchantedBookPrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
         ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
         if (enchantments == null || enchantments.isEmpty()) {
-            // No enchantment data — fall back to vanilla minimum base price.
+            // No enchantment data — fall back to cheapest possible non‑treasure L1.
             return 5;
         }
 
@@ -85,14 +77,16 @@ public final class PriceResolver {
         Holder<Enchantment> holder = entry.getKey();
         int level = Math.max(1, entry.getIntValue());
 
-        // 1.21+: treasure check via tag instead of isTreasureOnly()
         boolean isTreasure = holder.is(EnchantmentTags.TREASURE);
-        boolean useMax = config.priceMode == VillagerBargainsConfig.PriceMode.MAXIMUM;
 
-        int base = useMax ? (2 + 8 * level) : (2 + 3 * level);
-        if (isTreasure) base *= 2;
+        int price = 3 * level + 2; // vanilla minimum for non‑treasure
+        if (isTreasure) {
+            price *= 2;
+            // Known Mojang edge cases (like Frost Walker II often being
+            // documented at 16) can be special‑cased here if desired.
+        }
 
-        // Clamp to valid emerald trade range.
-        return Math.max(1, Math.min(64, base));
+        // Clamp to the valid emerald trade range.
+        return Math.max(1, Math.min(64, price));
     }
 }
