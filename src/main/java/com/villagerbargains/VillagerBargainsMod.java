@@ -17,12 +17,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Mod entrypoint.
+ * Mod entrypoint. Wires config -> trade overrides -> in-memory data pack.
  *
- * What changes between MC versions:
- *  - PackLocationInfo / Pack.Metadata constructor signatures (check Mojang mappings)
- *  - GodRollResourcePack trade paths (update VanillaTrades.java)
- *  - Pack construction API (Pack constructor vs Pack.readMetaAndCreate)
+ * NOTE for MC version updates:
+ *   - Pack.readMetaAndCreate signature lives here; update if MC changes it.
+ *   - PackSelectionConfig(enabled, position, fixed) - adjust as needed.
  */
 public final class VillagerBargainsMod implements ModInitializer {
 
@@ -31,13 +30,16 @@ public final class VillagerBargainsMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
-        ModLogger.get().info("[VillagerBargains] Config loaded. Global price mode: {}", config.globalPriceMode);
+        ModLogger.get().info("[VillagerBargains] Config loaded. Global price mode: {}",
+                config.globalPriceMode);
 
-        // Build all override JSONs once at startup; they live in RAM for the lifetime of the server.
+        // Build all override JSONs once at startup - cheap, pure in-memory.
         Map<String, byte[]> overrides = GodRollResourcePack.buildAllOverrides();
-        ModLogger.get().info("[VillagerBargains] Generated {} trade price override(s).", overrides.size());
+        ModLogger.get().info("[VillagerBargains] Generated {} trade price override(s).",
+                overrides.size());
 
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+
             PackLocationInfo locationInfo = new PackLocationInfo(
                     MOD_ID + "_overrides",
                     Component.literal("VillagerBargains Trade Overrides"),
@@ -45,31 +47,40 @@ public final class VillagerBargainsMod implements ModInitializer {
                     Optional.empty()
             );
 
-            // ResourcesSupplier — returns the same InMemoryPack for both openPrimary and openFull.
-            Pack.ResourcesSupplier supplier = info -> new InMemoryPack(info, overrides);
+            // ResourcesSupplier has two abstract methods in MC 26.x - cannot use a lambda.
+            Pack.ResourcesSupplier supplier = new Pack.ResourcesSupplier() {
+                @Override
+                public net.minecraft.server.packs.PackResources openPrimary(
+                        PackLocationInfo info) {
+                    return new InMemoryPack(info, overrides);
+                }
 
-            // Pack.Metadata is a record: description, supportedFormats, requestedFeatures, overlays.
-            // supportedFormats uses InclusiveRange<Integer>; passing max-int means "all pack formats".
-            Pack.Metadata metadata = Pack.readMetaAndCreate(
-                    locationInfo,
-                    supplier,
-                    PackType.SERVER_DATA
+                @Override
+                public net.minecraft.server.packs.PackResources openFull(
+                        PackLocationInfo info, Pack.Metadata metadata) {
+                    return new InMemoryPack(info, overrides);
+                }
+            };
+
+            // PackSelectionConfig(alwaysEnabled, position, fixedPosition)
+            PackSelectionConfig selectionConfig =
+                    new PackSelectionConfig(true, Pack.Position.TOP, false);
+
+            // readMetaAndCreate reads pack.mcmeta from the supplier and returns
+            // Optional.empty() only if the pack metadata is unreadable.
+            Optional<Pack> pack = Pack.readMetaAndCreate(
+                    locationInfo, supplier, PackType.SERVER_DATA, selectionConfig);
+
+            pack.ifPresentOrElse(
+                    p -> {
+                        server.getPackRepository().addPack(p);
+                        ModLogger.get().info(
+                                "[VillagerBargains] Trade override pack injected.");
+                    },
+                    () -> ModLogger.get().error(
+                            "[VillagerBargains] Failed to create override pack - " +
+                            "readMetaAndCreate returned empty. Check pack metadata.")
             );
-
-            if (metadata == null) {
-                ModLogger.get().error("[VillagerBargains] Pack metadata could not be created — aborting injection.");
-                return;
-            }
-
-            Pack pack = new Pack(
-                    locationInfo,
-                    supplier,
-                    metadata,
-                    new PackSelectionConfig(true, Pack.Position.TOP, true)
-            );
-
-            server.getPackRepository().addPack(pack);
-            ModLogger.get().info("[VillagerBargains] Trade override pack injected.");
         });
     }
 }
