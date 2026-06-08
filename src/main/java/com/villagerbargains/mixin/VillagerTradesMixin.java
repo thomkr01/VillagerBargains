@@ -20,12 +20,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Hooks into Villager#updateTrades.
  *
- * We use targets string (not Villager.class) because without mappings
- * the Villager class is not on the compile classpath.
- * "net.minecraft.world.entity.npc.Villager" is the correct Mojang
- * runtime name for MC 26.1+.
+ * In MC 26.1.2, Villager moved to net.minecraft.world.entity.npc.villager.Villager
+ * (extra 'villager' sub-package). We use @Mixin(targets) so the string is resolved
+ * at runtime and not by javac at compile time.
  */
-@Mixin(targets = "net.minecraft.world.entity.npc.Villager")
+@Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
 
     @Shadow public abstract MerchantOffers getOffers();
