@@ -30,8 +30,6 @@ import java.util.Map;
 @Mixin(targets = "net.minecraft.world.entity.npc.Villager")
 public abstract class VillagerTradesMixin {
 
-    // Shadow the underlying Villager#getOffers() so we can call it without
-    // depending on the concrete superclass type at compile time.
     @Shadow
     public abstract MerchantOffers getOffers();
 
@@ -48,14 +46,19 @@ public abstract class VillagerTradesMixin {
         }
     }
 
-    // ── Internal helpers ───────────────────────────────────────────────────────
-
     private static void applyPriceConfig(MerchantOffer offer, VillagerBargainsConfig config) {
         ItemStack firstBuy = offer.getBaseCostA();
         if (firstBuy.isEmpty()) return;
 
-        TradeDefinition def = findDefinitionForOffer(offer, firstBuy);
-        if (def == null) return;
+        // For enchanted books, PriceResolver derives the price purely from the
+        // enchantment on the result item — no TradeDefinition needed.
+        // For all other trades, look up the definition by the buy item.
+        TradeDefinition def = offer.getResult().is(Items.ENCHANTED_BOOK)
+                ? null
+                : findDefinitionByItem(firstBuy.getItem().toString());
+
+        // Non-book trades require a matching definition; skip if unknown.
+        if (def == null && !offer.getResult().is(Items.ENCHANTED_BOOK)) return;
 
         int desiredPrice = PriceResolver.resolve(offer, def, config);
         if (desiredPrice < 0) return; // mod disabled
@@ -63,32 +66,16 @@ public abstract class VillagerTradesMixin {
         int currentCount = firstBuy.getCount();
         if (currentCount != desiredPrice) {
             firstBuy.setCount(desiredPrice);
-            ModLogger.get().debug("[VillagerBargains] {} : {} → {}", def.tradeId(), currentCount, desiredPrice);
+            ModLogger.get().debug("[VillagerBargains] {} : {} → {}",
+                    def != null ? def.tradeId() : "enchanted_book", currentCount, desiredPrice);
         }
-    }
-
-    /**
-     * Chooses the best TradeDefinition for a given offer.
-     *
-     *  - For normal trades we match by the first buy item (emeralds, crops,
-     *    etc.) using findDefinitionByItem.
-     *  - For enchanted books, the first buy item is always emeralds, so we
-     *    instead match by the trade id suffix "enchanted_book".
-     */
-    private static TradeDefinition findDefinitionForOffer(MerchantOffer offer, ItemStack firstBuy) {
-        if (offer.getResult().is(Items.ENCHANTED_BOOK)) {
-            return findDefinitionByTradeSuffix("enchanted_book");
-        }
-
-        String itemId = firstBuy.getItem().toString();
-        return findDefinitionByItem(itemId);
     }
 
     /**
      * Finds the best-matching TradeDefinition for the given item ID string.
      * The item ID is the last path segment of the trade ID
      * (e.g. "minecraft:emerald" → matches trades whose id ends with "/emerald").
-     * Falls back to null if nothing matches.
+     * Returns null if nothing matches.
      */
     private static TradeDefinition findDefinitionByItem(String itemId) {
         int colon = itemId.lastIndexOf(':');
@@ -99,26 +86,9 @@ public abstract class VillagerTradesMixin {
             int lastSlash = tradeId.lastIndexOf('/');
             if (lastSlash >= 0) {
                 String tradeName = tradeId.substring(lastSlash + 1);
-                if (tradeName.contains(itemName) || tradeName.equals(itemName + "_buy") || tradeName.equals(itemName + "_sell")) {
-                    return entry.getValue();
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Looks up a TradeDefinition whose trade id ends with the given suffix,
-     * e.g. "/enchanted_book". Used for all enchanted-book librarian trades
-     * where the first buy item (emerald) is not specific enough.
-     */
-    private static TradeDefinition findDefinitionByTradeSuffix(String suffix) {
-        for (Map.Entry<String, TradeDefinition> entry : VanillaTrades.getAll().entrySet()) {
-            String tradeId = entry.getKey();
-            int lastSlash = tradeId.lastIndexOf('/');
-            if (lastSlash >= 0) {
-                String tradeName = tradeId.substring(lastSlash + 1);
-                if (tradeName.equals(suffix)) {
+                if (tradeName.contains(itemName)
+                        || tradeName.equals(itemName + "_buy")
+                        || tradeName.equals(itemName + "_sell")) {
                     return entry.getValue();
                 }
             }

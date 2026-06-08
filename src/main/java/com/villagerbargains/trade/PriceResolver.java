@@ -19,6 +19,8 @@ import net.minecraft.world.item.trading.MerchantOffer;
  *  - For normal trades: uses vanilla min or max count from TradeDefinition.
  *  - For librarian enchanted books: reproduces Minecraft's documented
  *    min/max price formula based on enchantment level and treasure status.
+ *    The def parameter may be null for enchanted books — price is derived
+ *    entirely from the enchantment, not from VanillaTrades.
  *
  * Keeping this as a dedicated class means price logic stays decoupled from
  * mixins and can be changed without touching villager injection code.
@@ -36,7 +38,7 @@ public final class PriceResolver {
 
     /**
      * @param offer   the concrete merchant offer (needed for enchanted books); may be null
-     * @param def     vanilla trade definition holding min/max values
+     * @param def     vanilla trade definition holding min/max values; may be null for enchanted books
      * @param config  the loaded VillagerBargainsConfig
      * @return final price, or -1 if the mod is disabled
      */
@@ -44,8 +46,10 @@ public final class PriceResolver {
         if (!config.enabled) return -1;
 
         if (offer != null && offer.getResult().is(Items.ENCHANTED_BOOK)) {
-            return resolveEnchantedBookPrice(offer, def, config);
+            return resolveEnchantedBookPrice(offer, config);
         }
+
+        if (def == null) return -1;
 
         // Non-book trades: use the configured price mode.
         return config.priceMode == VillagerBargainsConfig.PriceMode.MAXIMUM
@@ -62,19 +66,19 @@ public final class PriceResolver {
      * "Treasure" is determined by the EnchantmentTags.TREASURE tag, not
      * by a method on the Enchantment class.
      *
-     * Formula:
+     * Formula (no TradeDefinition needed — price is enchantment-specific):
      *   MINIMUM base = 2 + 3 * level
      *   MAXIMUM base = 2 + 8 * level
      *   Treasure enchantments are doubled.
      *   Result is clamped to [1, 64].
      */
-    private static int resolveEnchantedBookPrice(MerchantOffer offer, TradeDefinition def, VillagerBargainsConfig config) {
+    private static int resolveEnchantedBookPrice(MerchantOffer offer, VillagerBargainsConfig config) {
         ItemStack result = offer.getResult();
 
-        // 1.20.5+ API: enchantments stored as DataComponent.
         ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
         if (enchantments == null || enchantments.isEmpty()) {
-            return def.vanillaMin(); // safety fallback
+            // No enchantment data — fall back to vanilla minimum base price.
+            return 5;
         }
 
         var entry = enchantments.entrySet().iterator().next();
@@ -88,9 +92,7 @@ public final class PriceResolver {
         int base = useMax ? (2 + 8 * level) : (2 + 3 * level);
         if (isTreasure) base *= 2;
 
-        int clamped = (def != null) ? def.clamp(base) : base;
-        if (clamped < 1) clamped = 1;
-        if (clamped > 64) clamped = 64;
-        return clamped;
+        // Clamp to valid emerald trade range.
+        return Math.max(1, Math.min(64, base));
     }
 }
