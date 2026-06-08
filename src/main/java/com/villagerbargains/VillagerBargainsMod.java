@@ -1,8 +1,8 @@
 package com.villagerbargains;
 
 import com.villagerbargains.config.VillagerBargainsConfig;
-import com.villagerbargains.resource.GodRollResourcePack;
-import com.villagerbargains.resource.InMemoryPack;
+import com.villagerbargains.resource.InMemoryResourcePack;
+import com.villagerbargains.resource.TradeOverrideJson;
 import com.villagerbargains.util.ModLogger;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -12,59 +12,38 @@ import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 public final class VillagerBargainsMod implements ModInitializer {
     public static final String MOD_ID = "villagerbargains";
 
-    // Pack format version for MC 26.1.x data packs
-    private static final int DATA_PACK_FORMAT = 61;
-
     @Override
     public void onInitialize() {
         VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
         ModLogger.get().info("VillagerBargains loaded. Global price mode: {}", config.globalPriceMode);
 
-        Map<String, byte[]> overrides = GodRollResourcePack.buildAllOverrides();
-        ModLogger.get().info("VillagerBargains: generated {} trade price override(s).", overrides.size());
+        Map<String, byte[]> files = TradeOverrideJson.buildAll();
+        ModLogger.get().info("VillagerBargains: generated {} trade override(s).", files.size());
 
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            PackLocationInfo locationInfo = new PackLocationInfo(
-                    MOD_ID + "_overrides",
-                    Component.literal("VillagerBargains Trade Overrides"),
-                    PackSource.BUILT_IN,
-                    Optional.empty()
+            PackLocationInfo info = new PackLocationInfo(
+                MOD_ID + "_overrides",
+                Component.literal("VillagerBargains Trade Overrides"),
+                PackSource.BUILT_IN,
+                Optional.empty()
             );
-
-            InMemoryPack pack = new InMemoryPack(locationInfo, overrides);
-
+            InMemoryResourcePack pack = new InMemoryResourcePack(info, files);
             server.getPackRepository().addPack(
-                new Pack(
-                    locationInfo,
-                    new Pack.ResourcesSupplier() {
-                        @Override
-                        public net.minecraft.server.packs.PackResources openPrimary(PackLocationInfo info) {
-                            return pack;
-                        }
-                        @Override
-                        public net.minecraft.server.packs.PackResources openFull(
-                                PackLocationInfo info, Pack.Metadata metadata) {
-                            return pack;
-                        }
-                    },
-                    new Pack.Metadata(
-                        Component.literal("VillagerBargains trade price overrides"),
-                        DATA_PACK_FORMAT,
-                        List.of(),
-                        List.of()
-                    ),
-                    new PackSelectionConfig(true, Pack.Position.TOP, true)
-                )
+                Pack.readMetaAndCreate(info, new Pack.ResourcesSupplier() {
+                    @Override
+                    public net.minecraft.server.packs.PackResources openPrimary(PackLocationInfo i) { return pack; }
+                    @Override
+                    public net.minecraft.server.packs.PackResources openFull(PackLocationInfo i, Pack.Metadata m) { return pack; }
+                }, net.minecraft.server.packs.PackType.SERVER_DATA,
+                   new PackSelectionConfig(true, Pack.Position.TOP, true))
             );
-
-            ModLogger.get().info("VillagerBargains: trade override pack injected into server data repository.");
+            ModLogger.get().info("VillagerBargains: pack injected.");
         });
     }
 }
