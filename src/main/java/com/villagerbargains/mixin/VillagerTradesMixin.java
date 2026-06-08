@@ -5,12 +5,11 @@ import com.villagerbargains.trade.PriceResolver;
 import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
-import net.minecraft.world.entity.npc.AbstractVillager;
-import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -27,12 +26,13 @@ import java.util.Map;
  * Only newly generated offers are affected; existing offers stored in NBT are
  * loaded as-is and never passed through this method.
  */
-@Mixin(Villager.class)
-public abstract class VillagerTradesMixin extends AbstractVillager {
+@Mixin(targets = "net.minecraft.world.entity.npc.Villager")
+public abstract class VillagerTradesMixin {
 
-    private VillagerTradesMixin() {
-        super(null, null);
-    }
+    // Shadow the underlying Villager#getOffers() so we can call it without
+    // depending on the concrete superclass type at compile time.
+    @Shadow
+    public abstract MerchantOffers getOffers();
 
     @Inject(method = "updateTrades", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
