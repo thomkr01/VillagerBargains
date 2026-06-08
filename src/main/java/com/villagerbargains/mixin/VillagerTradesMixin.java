@@ -55,44 +55,37 @@ public abstract class VillagerTradesMixin {
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book — log every possible string representation of the holder.
+        // 1. Enchanted book — log every possible string representation.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var entry = enchantments.entrySet().iterator().next();
                 var holder = entry.getKey();
 
-                // Log every available string so we can see what works at runtime.
-                ModLogger.get().info("[VB-DEBUG] holder.toString()         = {}", holder.toString());
+                ModLogger.get().info("[VB-DEBUG] holder.toString()   = {}", holder.toString());
 
                 try {
-                    ModLogger.get().info("[VB-DEBUG] getRegisteredName()       = {}", holder.getRegisteredName());
+                    ModLogger.get().info("[VB-DEBUG] getRegisteredName() = {}", holder.getRegisteredName());
                 } catch (Throwable t) {
                     ModLogger.get().info("[VB-DEBUG] getRegisteredName() THREW: {}", t.toString());
                 }
 
                 var keyOpt = holder.unwrapKey();
                 if (keyOpt.isPresent()) {
-                    var key = keyOpt.get();
-                    ModLogger.get().info("[VB-DEBUG] key.toString()            = {}", key.toString());
-                    try {
-                        ModLogger.get().info("[VB-DEBUG] key.location().toString() = {}", key.location().toString());
-                    } catch (Throwable t) {
-                        ModLogger.get().info("[VB-DEBUG] key.location() THREW:      {}", t.toString());
-                    }
+                    ModLogger.get().info("[VB-DEBUG] key.toString()      = {}", keyOpt.get().toString());
                 } else {
                     ModLogger.get().info("[VB-DEBUG] unwrapKey() = empty");
                 }
 
-                // Attempt lookup with getRegisteredName() and log result.
+                // Attempt lookup with getRegisteredName().
                 try {
                     String enchId = holder.getRegisteredName();
                     String lookupKey = "enchanted_book:" + enchId;
                     TradeDefinition def = VanillaTrades.getByBook(lookupKey);
-                    ModLogger.get().info("[VB-DEBUG] lookup key='{}' result={}", lookupKey, def != null ? def.tradeId() : "NULL");
+                    ModLogger.get().info("[VB-DEBUG] lookup='{}' result={}", lookupKey, def != null ? def.tradeId() : "NULL");
                     if (def != null) return def;
                 } catch (Throwable t) {
-                    ModLogger.get().info("[VB-DEBUG] lookup via getRegisteredName THREW: {}", t.toString());
+                    ModLogger.get().info("[VB-DEBUG] lookup THREW: {}", t.toString());
                 }
             }
             return null;
@@ -102,7 +95,7 @@ public abstract class VillagerTradesMixin {
         if (!result.isEmpty()) {
             String path = itemPath(result);
             TradeDefinition def = VanillaTrades.getByResultItem(path);
-            ModLogger.get().debug("[VB-DEBUG] sell item='{}' result={}", path, def != null ? def.tradeId() : "NULL");
+            ModLogger.get().debug("[VB-DEBUG] sell='{}' def={}", path, def != null ? def.tradeId() : "NULL");
             if (def != null) return def;
         }
 
@@ -111,7 +104,7 @@ public abstract class VillagerTradesMixin {
         if (!costA.isEmpty()) {
             String path = itemPath(costA);
             TradeDefinition def = VanillaTrades.getByResultItem(path);
-            ModLogger.get().debug("[VB-DEBUG] buy  item='{}' result={}", path, def != null ? def.tradeId() : "NULL");
+            ModLogger.get().debug("[VB-DEBUG] buy='{}' def={}", path, def != null ? def.tradeId() : "NULL");
             return def;
         }
 
