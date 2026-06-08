@@ -11,9 +11,10 @@ import java.util.Map;
  * THIS IS THE ONLY FILE THAT NEEDS UPDATING WHEN MINECRAFT CHANGES TRADE RANGES.
  *
  * Normal trades:       register(map, "minecraft:<profession>/level_N/<name>", min, max)
- * Enchanted books:     registerBook(books, "minecraft:<id>", minPerLevel, maxPerLevel)
- *   Formula: cost = min(2 + level * factor, 64)
- *   Treasure enchants have double cost — use doubled factors.
+ * Enchanted books:     registerBook(books, "minecraft:<id>", maxPerLevel)
+ *   MINIMUM mode: always 1 emerald.
+ *   MAXIMUM mode: min(2 + level * maxPerLevel, 64)
+ *   Treasure enchants have double cost — use doubled maxPerLevel.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 public final class VanillaTrades {
@@ -27,7 +28,7 @@ public final class VanillaTrades {
         Map<String, TradeDefinition> map   = new LinkedHashMap<>();
         Map<String, TradeDefinition> books = new LinkedHashMap<>();
 
-        // ── Armorer ────────────────────────────────────────────────────────────
+        // ── Armorer ───────────────────────────────────────────────────────────────────
         register(map, "minecraft:armorer/level_1/coal_buy",               16, 24);
         register(map, "minecraft:armorer/level_1/iron_leggings_sell",       7, 11);
         register(map, "minecraft:armorer/level_1/iron_boots_sell",          4,  7);
@@ -47,7 +48,7 @@ public final class VanillaTrades {
         register(map, "minecraft:armorer/level_5/diamond_helmet_sell",      8, 14);
         register(map, "minecraft:armorer/level_5/diamond_chestplate_sell", 16, 26);
 
-        // ── Butcher ────────────────────────────────────────────────────────────
+        // ── Butcher ───────────────────────────────────────────────────────────────────
         register(map, "minecraft:butcher/level_1/chicken_buy",             14, 18);
         register(map, "minecraft:butcher/level_1/cooked_chicken_sell",      6,  8);
         register(map, "minecraft:butcher/level_1/porkchop_buy",             7, 10);
@@ -60,7 +61,7 @@ public final class VanillaTrades {
         register(map, "minecraft:butcher/level_5/rabbit_buy",               4,  6);
         register(map, "minecraft:butcher/level_5/cooked_rabbit_sell",       3,  5);
 
-        // ── Cartographer ───────────────────────────────────────────────────────
+        // ── Cartographer ─────────────────────────────────────────────────────────────────
         register(map, "minecraft:cartographer/level_1/paper_buy",          24, 36);
         register(map, "minecraft:cartographer/level_1/map_sell",            7, 11);
         register(map, "minecraft:cartographer/level_2/glass_pane_buy",     11, 17);
@@ -69,7 +70,7 @@ public final class VanillaTrades {
         register(map, "minecraft:cartographer/level_4/ocean_explorer_map_sell",  12, 20);
         register(map, "minecraft:cartographer/level_5/woodland_explorer_map_sell", 14, 22);
 
-        // ── Cleric ─────────────────────────────────────────────────────────────
+        // ── Cleric ─────────────────────────────────────────────────────────────────────
         register(map, "minecraft:cleric/level_1/rotten_flesh_buy",         36, 40);
         register(map, "minecraft:cleric/level_1/emerald_sell",              1,  1);
         register(map, "minecraft:cleric/level_2/gold_ingot_buy",            3,  4);
@@ -82,7 +83,7 @@ public final class VanillaTrades {
         register(map, "minecraft:cleric/level_5/exp_bottle_sell",           3,  5);
         register(map, "minecraft:cleric/level_5/glowstone_buy",             5,  7);
 
-        // ── Farmer ─────────────────────────────────────────────────────────────
+        // ── Farmer ─────────────────────────────────────────────────────────────────────
         register(map, "minecraft:farmer/level_1/wheat_buy",                20, 26);
         register(map, "minecraft:farmer/level_1/bread_sell",                1,  1);
         register(map, "minecraft:farmer/level_1/pumpkin_buy",               6, 13);
@@ -96,7 +97,7 @@ public final class VanillaTrades {
         register(map, "minecraft:farmer/level_5/golden_carrot_sell",        3,  4);
         register(map, "minecraft:farmer/level_5/glistering_melon_slice_sell", 4, 5);
 
-        // ── Fisherman ──────────────────────────────────────────────────────────
+        // ── Fisherman ──────────────────────────────────────────────────────────────────
         register(map, "minecraft:fisherman/level_1/coal_buy",              10, 15);
         register(map, "minecraft:fisherman/level_1/cod_sell",               6, 10);
         register(map, "minecraft:fisherman/level_1/string_buy",            20, 22);
@@ -108,7 +109,7 @@ public final class VanillaTrades {
         register(map, "minecraft:fisherman/level_4/boat_sell",              3,  5);
         register(map, "minecraft:fisherman/level_5/enchanted_fishing_rod_sell", 8, 22);
 
-        // ── Fletcher ───────────────────────────────────────────────────────────
+        // ── Fletcher ────────────────────────────────────────────────────────────────────
         register(map, "minecraft:fletcher/level_1/stick_buy",              32, 64);
         register(map, "minecraft:fletcher/level_1/arrow_sell",             16, 32);
         register(map, "minecraft:fletcher/level_1/flint_buy",              26, 30);
@@ -121,7 +122,7 @@ public final class VanillaTrades {
         register(map, "minecraft:fletcher/level_5/enchanted_bow_sell",      8, 22);
         register(map, "minecraft:fletcher/level_5/tipped_arrow_sell",       2,  5);
 
-        // ── Leatherworker ──────────────────────────────────────────────────────
+        // ── Leatherworker ────────────────────────────────────────────────────────────────
         register(map, "minecraft:leatherworker/level_1/leather_buy",        6, 10);
         register(map, "minecraft:leatherworker/level_1/leather_pants_sell", 2,  4);
         register(map, "minecraft:leatherworker/level_1/leather_boots_sell", 2,  4);
@@ -133,7 +134,7 @@ public final class VanillaTrades {
         register(map, "minecraft:leatherworker/level_4/turtle_shell_sell",  4,  8);
         register(map, "minecraft:leatherworker/level_5/saddle_sell",        8, 10);
 
-        // ── Librarian (non-book) ────────────────────────────────────────────────
+        // ── Librarian (non-book) ─────────────────────────────────────────────────────────
         register(map, "minecraft:librarian/level_1/paper_buy",             24, 36);
         register(map, "minecraft:librarian/level_1/bookshelf_sell",         9, 12);
         register(map, "minecraft:librarian/level_2/book_buy",               8, 10);
@@ -145,57 +146,55 @@ public final class VanillaTrades {
         register(map, "minecraft:librarian/level_4/compass_sell",           4,  6);
         register(map, "minecraft:librarian/level_5/name_tag_sell",         20, 22);
 
-        // ── Librarian enchanted books ──────────────────────────────────────────
-        // Formula: cost = min(2 + level * factor, 64)
-        // Source: Minecraft Wiki — Enchantment mechanics, librarian trades
-        // Normal enchants: minFactor=1, maxFactor=5  → lvl1=3..7, lvl5=7..27
-        // Treasure enchants: minFactor=2, maxFactor=10 → lvl1=4..12, lvl5=12..52
-        // Aqua Affinity / single-level: treated as level 1 always
-        // Mending, Soul Speed, Swift Sneak: treasure (double cost)
-        registerBook(books, "minecraft:protection",            1,  5);
-        registerBook(books, "minecraft:fire_protection",       1,  5);
-        registerBook(books, "minecraft:feather_falling",       1,  5);
-        registerBook(books, "minecraft:blast_protection",      1,  5);
-        registerBook(books, "minecraft:projectile_protection", 1,  5);
-        registerBook(books, "minecraft:respiration",           1,  5);
-        registerBook(books, "minecraft:aqua_affinity",         1,  2);  // max level 1
-        registerBook(books, "minecraft:thorns",                1,  5);
-        registerBook(books, "minecraft:depth_strider",         1,  5);
-        registerBook(books, "minecraft:frost_walker",          2, 10);  // treasure
-        registerBook(books, "minecraft:binding_curse",         2, 10);  // treasure
-        registerBook(books, "minecraft:sharpness",             1,  5);
-        registerBook(books, "minecraft:smite",                 1,  5);
-        registerBook(books, "minecraft:bane_of_arthropods",    1,  5);
-        registerBook(books, "minecraft:knockback",             1,  5);
-        registerBook(books, "minecraft:fire_aspect",           1,  5);
-        registerBook(books, "minecraft:looting",               1,  5);
-        registerBook(books, "minecraft:sweeping_edge",         1,  5);
-        registerBook(books, "minecraft:efficiency",            1,  5);
-        registerBook(books, "minecraft:silk_touch",            1,  2);  // max level 1
-        registerBook(books, "minecraft:unbreaking",            1,  5);
-        registerBook(books, "minecraft:fortune",               1,  5);
-        registerBook(books, "minecraft:power",                 1,  5);
-        registerBook(books, "minecraft:punch",                 1,  5);
-        registerBook(books, "minecraft:flame",                 1,  2);  // max level 1
-        registerBook(books, "minecraft:infinity",              1,  2);  // max level 1, treasure
-        registerBook(books, "minecraft:luck_of_the_sea",       1,  5);
-        registerBook(books, "minecraft:lure",                  1,  5);
-        registerBook(books, "minecraft:loyalty",               1,  5);
-        registerBook(books, "minecraft:impaling",              1,  5);
-        registerBook(books, "minecraft:riptide",               1,  5);
-        registerBook(books, "minecraft:channeling",            1,  2);  // max level 1
-        registerBook(books, "minecraft:multishot",             1,  2);  // max level 1
-        registerBook(books, "minecraft:quick_charge",          1,  5);
-        registerBook(books, "minecraft:piercing",              1,  5);
-        registerBook(books, "minecraft:mending",               2, 10);  // treasure
-        registerBook(books, "minecraft:vanishing_curse",       2, 10);  // treasure
-        registerBook(books, "minecraft:soul_speed",            2, 10);  // treasure
-        registerBook(books, "minecraft:swift_sneak",           2, 10);  // treasure
-        registerBook(books, "minecraft:wind_burst",            2, 10);  // treasure
-        registerBook(books, "minecraft:density",               1,  5);
-        registerBook(books, "minecraft:breach",                1,  5);
+        // ── Librarian enchanted books ────────────────────────────────────────────────────
+        // MINIMUM mode: always 1 emerald.
+        // MAXIMUM mode: min(2 + level * maxPerLevel, 64)
+        // Normal enchants: maxPerLevel=5
+        // Treasure enchants: maxPerLevel=10
+        registerBook(books, "minecraft:protection",             5);
+        registerBook(books, "minecraft:fire_protection",        5);
+        registerBook(books, "minecraft:feather_falling",        5);
+        registerBook(books, "minecraft:blast_protection",       5);
+        registerBook(books, "minecraft:projectile_protection",  5);
+        registerBook(books, "minecraft:respiration",            5);
+        registerBook(books, "minecraft:aqua_affinity",          2);  // max level 1
+        registerBook(books, "minecraft:thorns",                 5);
+        registerBook(books, "minecraft:depth_strider",          5);
+        registerBook(books, "minecraft:frost_walker",          10);  // treasure
+        registerBook(books, "minecraft:binding_curse",         10);  // treasure
+        registerBook(books, "minecraft:sharpness",              5);
+        registerBook(books, "minecraft:smite",                  5);
+        registerBook(books, "minecraft:bane_of_arthropods",     5);
+        registerBook(books, "minecraft:knockback",              5);
+        registerBook(books, "minecraft:fire_aspect",            5);
+        registerBook(books, "minecraft:looting",                5);
+        registerBook(books, "minecraft:sweeping_edge",          5);
+        registerBook(books, "minecraft:efficiency",             5);
+        registerBook(books, "minecraft:silk_touch",             2);  // max level 1
+        registerBook(books, "minecraft:unbreaking",             5);
+        registerBook(books, "minecraft:fortune",                5);
+        registerBook(books, "minecraft:power",                  5);
+        registerBook(books, "minecraft:punch",                  5);
+        registerBook(books, "minecraft:flame",                  2);  // max level 1
+        registerBook(books, "minecraft:infinity",               2);  // max level 1, treasure
+        registerBook(books, "minecraft:luck_of_the_sea",        5);
+        registerBook(books, "minecraft:lure",                   5);
+        registerBook(books, "minecraft:loyalty",                5);
+        registerBook(books, "minecraft:impaling",               5);
+        registerBook(books, "minecraft:riptide",                5);
+        registerBook(books, "minecraft:channeling",             2);  // max level 1
+        registerBook(books, "minecraft:multishot",              2);  // max level 1
+        registerBook(books, "minecraft:quick_charge",           5);
+        registerBook(books, "minecraft:piercing",               5);
+        registerBook(books, "minecraft:mending",               10);  // treasure
+        registerBook(books, "minecraft:vanishing_curse",       10);  // treasure
+        registerBook(books, "minecraft:soul_speed",            10);  // treasure
+        registerBook(books, "minecraft:swift_sneak",           10);  // treasure
+        registerBook(books, "minecraft:wind_burst",            10);  // treasure
+        registerBook(books, "minecraft:density",                5);
+        registerBook(books, "minecraft:breach",                 5);
 
-        // ── Mason ──────────────────────────────────────────────────────────────
+        // ── Mason ───────────────────────────────────────────────────────────────────────
         register(map, "minecraft:mason/level_1/clay_buy",                  10, 12);
         register(map, "minecraft:mason/level_1/brick_sell",                 1,  2);
         register(map, "minecraft:mason/level_2/stone_buy",                 20, 26);
@@ -207,7 +206,7 @@ public final class VanillaTrades {
         register(map, "minecraft:mason/level_5/quartz_buy",                12, 16);
         register(map, "minecraft:mason/level_5/quartz_pillar_sell",         1,  2);
 
-        // ── Shepherd ───────────────────────────────────────────────────────────
+        // ── Shepherd ────────────────────────────────────────────────────────────────────
         register(map, "minecraft:shepherd/level_1/wool_buy",               18, 22);
         register(map, "minecraft:shepherd/level_1/shears_sell",             2,  3);
         register(map, "minecraft:shepherd/level_2/dye_sell",                1,  2);
@@ -216,7 +215,7 @@ public final class VanillaTrades {
         register(map, "minecraft:shepherd/level_5/banner_sell",             3,  5);
         register(map, "minecraft:shepherd/level_5/bed_sell",                3,  5);
 
-        // ── Toolsmith ────────────────────────────────────────────────────────
+        // ── Toolsmith ────────────────────────────────────────────────────────────────────
         register(map, "minecraft:toolsmith/level_1/coal_buy",              15, 21);
         register(map, "minecraft:toolsmith/level_1/stone_axe_sell",         1,  2);
         register(map, "minecraft:toolsmith/level_1/stone_shovel_sell",      1,  2);
@@ -234,7 +233,7 @@ public final class VanillaTrades {
         register(map, "minecraft:toolsmith/level_5/diamond_pickaxe_sell",  13, 17);
         register(map, "minecraft:toolsmith/level_5/diamond_hoe_sell",       4,  7);
 
-        // ── Weaponsmith ────────────────────────────────────────────────────────
+        // ── Weaponsmith ───────────────────────────────────────────────────────────────────
         register(map, "minecraft:weaponsmith/level_1/coal_buy",            15, 21);
         register(map, "minecraft:weaponsmith/level_1/iron_axe_sell",        3,  5);
         register(map, "minecraft:weaponsmith/level_1/iron_sword_sell",      7, 11);
@@ -270,10 +269,9 @@ public final class VanillaTrades {
         map.put(id, new TradeDefinition(id, min, max));
     }
 
-    private static void registerBook(Map<String, TradeDefinition> books, String enchId,
-                                     int minPerLevel, int maxPerLevel) {
+    private static void registerBook(Map<String, TradeDefinition> books, String enchId, int maxPerLevel) {
         String sellKey = "enchanted_book:" + enchId;
-        books.put(sellKey, new TradeDefinition(sellKey, 0, 0, sellKey, minPerLevel, maxPerLevel));
+        books.put(sellKey, new TradeDefinition(sellKey, 0, 0, sellKey, maxPerLevel));
     }
 
     public static TradeDefinition get(String tradeId)           { return REGISTRY.get(tradeId); }
