@@ -6,55 +6,54 @@ import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import net.minecraft.world.item.trading.Merchant;
+import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
-public abstract class VillagerTradesMixin {
+public abstract class VillagerTradesMixin extends Entity {
 
-    /**
-     * Track whether we've already applied prices for this villager instance.
-     * Resets to false whenever updateTrades fires (new trades generated).
-     * Allows the tick-based fallback to apply once on first tick after load.
-     */
+    // Required by Entity superclass — never called directly.
+    public VillagerTradesMixin(EntityType<?> type, Level level) {
+        super(type, level);
+    }
+
     private boolean villagerbargains$applied = false;
 
     /** Fires when a villager generates new trades (level-up or fresh spawn). */
     @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
+        // updateTrades only fires server-side, no guard needed.
         villagerbargains$applied = false;
         reapplyAllOffers();
         villagerbargains$applied = true;
     }
 
-    /**
-     * Fires on load from disk if the method name is correct for this MC version.
-     * require=0 means the game will NOT crash if the method is not found
-     * (e.g. if it is obfuscated under a different name).
-     * The tick-based fallback below handles that case.
-     */
     @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V",
             at = @At("TAIL"), require = 0)
     private void villagerbargains$onLoad(CompoundTag tag, CallbackInfo ci) {
         villagerbargains$applied = false;
     }
 
-    /**
-     * Fallback: on the first server tick after this villager is loaded,
-     * apply prices if they haven't been applied yet.
-     * This catches villagers loaded from disk regardless of method name.
-     */
+    /** Fallback: apply on first tick after load. Server-side only. */
     @Inject(method = "tick()V", at = @At("HEAD"), require = 0)
     private void villagerbargains$onTick(CallbackInfo ci) {
         if (!villagerbargains$applied) {
+            // Guard: only run on the server side.
+            if (this.level().isClientSide()) {
+                villagerbargains$applied = true; // don't retry on client
+                return;
+            }
             reapplyAllOffers();
             villagerbargains$applied = true;
         }
@@ -68,14 +67,6 @@ public abstract class VillagerTradesMixin {
         }
     }
 
-    /**
-     * Sets our desired price and zeroes MC's demand/reputation modifiers.
-     *
-     * MC's displayed price formula (MerchantOffer#getAdjustedCostA):
-     *   max(1, baseCostA + specialPriceDiff + floor(baseCostA * priceMultiplier * demand))
-     * After zeroing demand and specialPriceDiff:
-     *   max(1, desired + 0 + 0) = desired
-     */
     private static void applyPrice(MerchantOffer offer) {
         int desired = resolveDesiredPrice(offer);
         if (desired < 0) return;
@@ -97,19 +88,17 @@ public abstract class VillagerTradesMixin {
     private static int resolveDesiredPrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // Enchanted book: level-aware formula.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var    entry   = enchantments.entrySet().iterator().next();
-                String enchId  = entry.getKey().getRegisteredName();
-                int    level   = entry.getValue();
+                var    entry  = enchantments.entrySet().iterator().next();
+                String enchId = entry.getKey().getRegisteredName();
+                int    level  = entry.getValue();
                 return PriceResolver.resolveBook("enchanted_book:" + enchId, level);
             }
             return -1;
         }
 
-        // Normal trade.
         TradeDefinition def = resolveNormalTrade(result, offer.getBaseCostA());
         return def != null ? PriceResolver.resolve(def.tradeId()) : -1;
     }
