@@ -6,8 +6,6 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -22,10 +20,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * Injects at TAIL of Villager#updateTrades(ServerLevel).
  *
- * Matching strategy (all O(1)):
- *   1. Enchanted book -> match by enchantment ResourceLocation via ResourceKey.location()
- *   2. Sell trades    -> match by result item path via BuiltInRegistries.ITEM.getKey()
- *   3. Buy trades     -> match by cost item path  via BuiltInRegistries.ITEM.getKey()
+ * No ResourceLocation or BuiltInRegistries needed.
+ * Item name: Item.toString() returns "minecraft:iron_leggings" — take substring after ':'.
+ * Enchantment ID: ResourceKey.toString() returns "ResourceKey[... / minecraft:power]"
+ *   — we take everything after the last ' / ' and strip the trailing ']'.
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
@@ -56,42 +54,59 @@ public abstract class VillagerTradesMixin {
         }
     }
 
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    /**
+     * Item.toString() returns the registry ID, e.g. "minecraft:iron_leggings".
+     * We only need the path after ':', so: "iron_leggings".
+     */
+    private static String itemPath(ItemStack stack) {
+        String s = stack.getItem().toString(); // "minecraft:iron_leggings"
+        int colon = s.lastIndexOf(':');
+        return colon >= 0 ? s.substring(colon + 1) : s;
+    }
+
+    /**
+     * Extracts the enchantment registry ID from a ResourceKey toString().
+     * ResourceKey.toString() = "ResourceKey[minecraft:enchantment / minecraft:power]"
+     * We want: "minecraft:power"
+     */
+    private static String enchantmentId(Object resourceKey) {
+        String s = resourceKey.toString();
+        int sep = s.lastIndexOf(" / ");
+        if (sep < 0) return s;
+        String after = s.substring(sep + 3); // "minecraft:power]"
+        if (after.endsWith("]")) after = after.substring(0, after.length() - 1);
+        return after; // "minecraft:power"
+    }
+
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // 1. Enchanted book: get enchantment ID via ResourceKey.location() — no string parsing.
+        // 1. Enchanted book — match by enchantment ID.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
-                    // ResourceKey.location() returns the ResourceLocation directly.
-                    // toString() on a ResourceLocation is "namespace:path" — reliable.
-                    ResourceLocation loc = keyOpt.get().location();
-                    String enchId = loc.toString(); // e.g. "minecraft:power"
+                    String enchId = enchantmentId(keyOpt.get()); // "minecraft:power"
                     return VanillaTrades.getByBook("enchanted_book:" + enchId);
                 }
             }
             return null;
         }
 
-        // 2. Sell trade: match by result item registry path.
+        // 2. Sell trade — match by result item path.
         if (!result.isEmpty()) {
-            ResourceLocation loc = BuiltInRegistries.ITEM.getKey(result.getItem());
-            if (loc != null) {
-                TradeDefinition def = VanillaTrades.getByResultItem(loc.getPath());
-                if (def != null) return def;
-            }
+            TradeDefinition def = VanillaTrades.getByResultItem(itemPath(result));
+            if (def != null) return def;
         }
 
-        // 3. Buy trade: result is emerald, match by cost item registry path.
+        // 3. Buy trade — result is emerald, match by cost item path.
         ItemStack costA = offer.getBaseCostA();
         if (!costA.isEmpty()) {
-            ResourceLocation loc = BuiltInRegistries.ITEM.getKey(costA.getItem());
-            if (loc != null) {
-                return VanillaTrades.getByResultItem(loc.getPath());
-            }
+            return VanillaTrades.getByResultItem(itemPath(costA));
         }
 
         return null;
