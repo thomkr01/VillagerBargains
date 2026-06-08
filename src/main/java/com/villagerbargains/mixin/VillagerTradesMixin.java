@@ -20,16 +20,44 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.Villager")
 public abstract class VillagerTradesMixin {
 
+    /**
+     * Track whether we've already applied prices for this villager instance.
+     * Resets to false whenever updateTrades fires (new trades generated).
+     * Allows the tick-based fallback to apply once on first tick after load.
+     */
+    private boolean villagerbargains$applied = false;
+
     /** Fires when a villager generates new trades (level-up or fresh spawn). */
     @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
+        villagerbargains$applied = false;
         reapplyAllOffers();
+        villagerbargains$applied = true;
     }
 
-    /** Fires when a villager is loaded from disk — catches pre-existing villagers. */
-    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V", at = @At("TAIL"))
+    /**
+     * Fires on load from disk if the method name is correct for this MC version.
+     * require=0 means the game will NOT crash if the method is not found
+     * (e.g. if it is obfuscated under a different name).
+     * The tick-based fallback below handles that case.
+     */
+    @Inject(method = "readAdditionalSaveData(Lnet/minecraft/nbt/CompoundTag;)V",
+            at = @At("TAIL"), require = 0)
     private void villagerbargains$onLoad(CompoundTag tag, CallbackInfo ci) {
-        reapplyAllOffers();
+        villagerbargains$applied = false;
+    }
+
+    /**
+     * Fallback: on the first server tick after this villager is loaded,
+     * apply prices if they haven't been applied yet.
+     * This catches villagers loaded from disk regardless of method name.
+     */
+    @Inject(method = "tick()V", at = @At("HEAD"), require = 0)
+    private void villagerbargains$onTick(CallbackInfo ci) {
+        if (!villagerbargains$applied) {
+            reapplyAllOffers();
+            villagerbargains$applied = true;
+        }
     }
 
     private void reapplyAllOffers() {
