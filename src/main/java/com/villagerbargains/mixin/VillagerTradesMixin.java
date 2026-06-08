@@ -1,6 +1,5 @@
 package com.villagerbargains.mixin;
 
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.trade.PriceResolver;
 import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
@@ -25,50 +24,60 @@ public abstract class VillagerTradesMixin {
         MerchantOffers offers = ((Merchant)(Object)this).getOffers();
         if (offers == null || offers.isEmpty()) return;
 
-        VillagerBargainsConfig config = VillagerBargainsConfig.getInstance();
         for (MerchantOffer offer : offers) {
-            applyPrice(offer, config);
+            applyPrice(offer);
         }
     }
 
-    private static void applyPrice(MerchantOffer offer, VillagerBargainsConfig config) {
+    /**
+     * Sets the desired price on the offer and neutralises MC's demand/reputation
+     * modifiers so the displayed price equals exactly our desired value.
+     *
+     * MC's displayed price formula (MerchantOffer#getAdjustedCostA):
+     *   max(1, baseCostA + specialPriceDiff + floor(baseCostA * priceMultiplier * demand))
+     * After zeroing demand and specialPriceDiff:
+     *   max(1, desiredPrice + 0 + 0) = desiredPrice  (assuming desired >= 1)
+     */
+    private static void applyPrice(MerchantOffer offer) {
+        int desired = resolveDesiredPrice(offer);
+        if (desired < 0) return;
+
+        // Clamp to valid range: 1..64
+        desired = Math.max(1, Math.min(64, desired));
+
+        ItemStack costA   = offer.getBaseCostA();
+        int       current = costA.getCount();
+
+        // Set base cost.
+        costA.setCount(desired);
+
+        // Zero demand and specialPriceDiff so MC's formula outputs exactly 'desired'.
+        ((MerchantOfferAccessor) offer).setDemand(0);
+        offer.setSpecialPriceDiff(0);
+
+        if (current != desired) {
+            logApplied(offer, current, desired);
+        }
+    }
+
+    private static int resolveDesiredPrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // Enchanted book: resolve with level-aware formula.
+        // Enchanted book: level-aware formula.
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var entry = enchantments.entrySet().iterator().next();
-                String enchId  = entry.getKey().getRegisteredName(); // "minecraft:power"
-                int    level   = entry.getValue();                    // 1..5
-                String sellKey = "enchanted_book:" + enchId;
-
-                int desired = PriceResolver.resolveBook(sellKey, level);
-                if (desired < 0) return;
-
-                ItemStack costA = offer.getBaseCostA();
-                int current = costA.getCount();
-                if (current != desired) {
-                    costA.setCount(desired);
-                    ModLogger.get().info("[VB] book {} lvl{}: {} -> {}", enchId, level, current, desired);
-                }
+                var entry   = enchantments.entrySet().iterator().next();
+                String enchId  = entry.getKey().getRegisteredName();
+                int    level   = entry.getValue();
+                return PriceResolver.resolveBook("enchanted_book:" + enchId, level);
             }
-            return;
+            return -1;
         }
 
-        // Normal trade: resolve by result/buy item name.
+        // Normal trade.
         TradeDefinition def = resolveNormalTrade(result, offer.getBaseCostA());
-        if (def == null) return;
-
-        int desired = PriceResolver.resolve(def.tradeId());
-        if (desired < 0) return;
-
-        ItemStack costA = offer.getBaseCostA();
-        int current = costA.getCount();
-        if (current != desired) {
-            costA.setCount(desired);
-            ModLogger.get().info("[VB] trade {}: {} -> {}", def.tradeId(), current, desired);
-        }
+        return def != null ? PriceResolver.resolve(def.tradeId()) : -1;
     }
 
     private static String itemPath(ItemStack stack) {
@@ -78,15 +87,27 @@ public abstract class VillagerTradesMixin {
     }
 
     private static TradeDefinition resolveNormalTrade(ItemStack result, ItemStack costA) {
-        // Sell trade: match by result item.
         if (!result.isEmpty()) {
             TradeDefinition def = VanillaTrades.getByResultItem(itemPath(result));
             if (def != null) return def;
         }
-        // Buy trade: result is emerald, match by cost item.
         if (!costA.isEmpty()) {
             return VanillaTrades.getByResultItem(itemPath(costA));
         }
         return null;
+    }
+
+    private static void logApplied(MerchantOffer offer, int from, int to) {
+        ItemStack result = offer.getResult();
+        if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
+            ItemEnchantments enc = result.get(DataComponents.STORED_ENCHANTMENTS);
+            if (enc != null && !enc.isEmpty()) {
+                var e = enc.entrySet().iterator().next();
+                ModLogger.get().info("[VB] book {} lvl{}: {} -> {}",
+                        e.getKey().getRegisteredName(), e.getValue(), from, to);
+                return;
+            }
+        }
+        ModLogger.get().info("[VB] trade {}: {} -> {}", itemPath(result), from, to);
     }
 }
