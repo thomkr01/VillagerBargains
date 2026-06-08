@@ -8,6 +8,7 @@
   "authors": ["Tommy"],
   "contact": {},
   "license": "MIT",
+  "icon": "villagerbargains.png",
   "environment": "*",
   "entrypoints": {
     "main": [
