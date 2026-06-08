@@ -4,6 +4,7 @@
   "package": "com.villagerbargains.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "MerchantOfferAccessor",
     "VillagerTradesMixin"
   ],
   "injectors": {
