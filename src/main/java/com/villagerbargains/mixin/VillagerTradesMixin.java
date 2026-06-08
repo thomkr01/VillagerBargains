@@ -22,10 +22,8 @@ import java.util.Optional;
 
 /**
  * Intercepts villager trade generation at TAIL of updateTrades.
- * Replaces each MerchantOffer with a new one whose baseCostA is locked
- * to our configured price at construction time.
- * baseCostA is final in MerchantOffer, so mutation is not possible;
- * we must build a fresh offer and swap it in.
+ * Replaces each MerchantOffer with a new one whose baseCostA count is locked
+ * to our configured price at construction time — since baseCostA is final.
  */
 @Mixin(Villager.class)
 public abstract class VillagerTradesMixin extends AbstractVillager {
@@ -51,13 +49,9 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     /**
-     * Returns a new MerchantOffer with the configured price locked in,
-     * or null if this offer is not in our registry (leave it unchanged).
+     * Builds a new MerchantOffer identical to the original but with our price
+     * locked into baseCostA at construction. Returns null if not in registry.
      */
     private static MerchantOffer buildRepriced(MerchantOffer original) {
         int price = resolvePrice(original);
@@ -66,60 +60,57 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
                     describeResult(original.getResult()));
             return null;
         }
-
         price = Math.max(1, Math.min(64, price));
         int oldPrice = original.getBaseCostA().count();
 
-        // Build a fresh offer — baseCostA is final, so we cannot mutate it.
+        // baseCostA is final — we must construct a fresh offer with our price.
         MerchantOffer fresh = new MerchantOffer(
                 new ItemCost(original.getBaseCostA().item(), price),
-                original.getCostB(),
+                original.getCostB(),           // Optional<ItemCost> — unchanged
                 original.getResult().copy(),
                 original.getUses(),
                 original.getMaxUses(),
                 original.getXp(),
                 original.getPriceMultiplier()
         );
-        // Disable demand inflation permanently on this offer.
-        fresh.resetSpecialPriceDiff();
+        // Zero out demand and reputation modifiers so the price stays exact.
+        fresh.setSpecialPriceDiff(0);
 
         ModLogger.get().info("[VillagerBargains Repriced] '{}' : {} -> {} emeralds",
                 describeResult(original.getResult()), oldPrice, price);
         return fresh;
     }
 
-    /** Resolves the configured price for an offer. Returns -1 if not found. */
+    /** Resolves configured price. Returns -1 if not in registry. */
     private static int resolvePrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // Enchanted book?
+        // Enchanted book
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                var entry  = enchantments.entrySet().iterator().next();
-                String id  = entry.getKey().getRegisteredName();
-                int    lvl = entry.getValue();
-                int price  = PriceResolver.resolveBook("enchanted_book:" + id, lvl);
-                if (price < 0) {
+                var    entry = enchantments.entrySet().iterator().next();
+                String id    = entry.getKey().getRegisteredName();
+                int    lvl   = entry.getValue();
+                int    price = PriceResolver.resolveBook("enchanted_book:" + id, lvl);
+                if (price < 0)
                     ModLogger.get().info("[VillagerBargains Lookup] Book '{}' lvl {} not in registry.", id, lvl);
-                }
                 return price;
             }
-            ModLogger.get().info("[VillagerBargains Lookup] Enchanted book has no stored enchantments.");
+            ModLogger.get().info("[VillagerBargains Lookup] Enchanted book with no stored enchantments.");
             return -1;
         }
 
-        // Normal trade — try result item first, then costA item.
+        // Normal trade — try result item id first
         String resultId = itemId(result);
         int price = PriceResolver.resolve(resultId);
         if (price >= 0) return price;
 
+        // Fallback: try the cost item id
         String costId = itemId(offer.getBaseCostA().item().value().asItem().toString());
         price = PriceResolver.resolve(costId);
-        if (price < 0) {
-            ModLogger.get().info("[VillagerBargains Lookup] Normal trade result='{}' cost='{}' not in registry.",
-                    resultId, costId);
-        }
+        if (price < 0)
+            ModLogger.get().info("[VillagerBargains Lookup] result='{}' cost='{}' not in registry.", resultId, costId);
         return price;
     }
 
@@ -139,7 +130,7 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
                 var e = enc.entrySet().iterator().next();
                 return e.getKey().getRegisteredName() + " lvl " + e.getValue();
             }
-            return "enchanted_book (unknown)";
+            return "enchanted_book(unknown)";
         }
         return itemId(result);
     }
