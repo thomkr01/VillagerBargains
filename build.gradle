@@ -24,9 +24,10 @@ loom {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Official Mojang mappings — required so Mixin targets and class names
-    // like net.minecraft.world.entity.npc.Villager resolve correctly.
-    mappings loom.officialMojangMappings()
+    // MC 26.1.2 ships deobfuscated - use intermediary mappings (no Mojang mappings needed)
+    mappings loom.layered(config -> {
+        config.intermediary()
+    })
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }

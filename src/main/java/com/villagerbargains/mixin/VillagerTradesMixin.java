@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -28,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * To support new trades: edit VanillaTrades.
  * To change price logic: edit PriceResolver.
  */
-@Mixin(targets = "net.minecraft.world.entity.npc.Villager")
+@Mixin(Villager.class)
 public abstract class VillagerTradesMixin {
 
     @Shadow public abstract MerchantOffers getOffers();
@@ -69,7 +70,6 @@ public abstract class VillagerTradesMixin {
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
                 // ResourceKey.toString() => "ResourceKey[minecraft:enchantment / minecraft:mending]"
-                // Parse out the id after " / " and before the closing "]"
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
                     String keyStr = keyOpt.get().toString();
