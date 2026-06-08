@@ -3,7 +3,6 @@ package com.villagerbargains.resource;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
 import net.minecraft.server.packs.resources.IoSupplier;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,43 +34,19 @@ public final class InMemoryResourcePack extends AbstractPackResources {
     }
 
     @Override
-    public @Nullable IoSupplier<InputStream> getResource(PackType type, net.minecraft.resources.ResourceLocation loc) {
-        String path = type.getDirectory() + "/" + loc.getNamespace() + "/" + loc.getPath();
-        byte[] data = files.get(path);
-        return data != null ? () -> new ByteArrayInputStream(data) : null;
-    }
-
-    @Override
     public void listResources(PackType type, String namespace, String prefix,
                               ResourceOutput output) {
-        String base = type.getDirectory() + "/" + namespace + "/";
-        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
-            String path = entry.getKey();
-            if (path.startsWith(base)) {
-                String relative = path.substring(base.length());
-                if (relative.startsWith(prefix)) {
-                    output.accept(
-                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(namespace, relative),
-                        () -> new ByteArrayInputStream(entry.getValue())
-                    );
-                }
-            }
-        }
+        // No-op: files are served via getRootResource, not enumerated
     }
 
     @Override
     public Set<String> getNamespaces(PackType type) {
-        String prefix = type.getDirectory() + "/";
+        String pfx = type.getDirectory() + "/";
         return files.keySet().stream()
-            .filter(p -> p.startsWith(prefix))
-            .map(p -> p.substring(prefix.length()))
+            .filter(p -> p.startsWith(pfx))
+            .map(p -> p.substring(pfx.length()))
             .map(p -> p.contains("/") ? p.substring(0, p.indexOf('/')) : p)
             .collect(Collectors.toSet());
-    }
-
-    @Override
-    public @Nullable <T> T getMetadataSection(MetadataSectionSerializer<T> deserializer) {
-        return null;
     }
 
     @Override
