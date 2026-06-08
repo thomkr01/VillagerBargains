@@ -6,7 +6,6 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -63,16 +62,19 @@ public abstract class VillagerTradesMixin {
     }
 
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        // Step 1: enchanted book — match by sell enchantment ID
+        // Step 1: enchanted book - match by sell enchantment ID
         ItemStack result = offer.getResult();
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
                 var enchEntry = enchantments.entrySet().iterator().next();
+                // ResourceKey.toString() => "ResourceKey[minecraft:enchantment / minecraft:mending]"
+                // Parse out the id after " / " and before the closing "]"
                 var keyOpt = enchEntry.getKey().unwrapKey();
                 if (keyOpt.isPresent()) {
-                    ResourceLocation loc = keyOpt.get().location();
-                    String enchId  = loc.getNamespace() + ":" + loc.getPath();
+                    String keyStr = keyOpt.get().toString();
+                    int sep = keyStr.lastIndexOf(" / ");
+                    String enchId = sep >= 0 ? keyStr.substring(sep + 3, keyStr.length() - 1) : keyStr;
                     String sellKey = "enchanted_book:" + enchId;
                     TradeDefinition def = VanillaTrades.getByBook(sellKey);
                     if (def != null) return def;
@@ -80,10 +82,10 @@ public abstract class VillagerTradesMixin {
             }
         }
 
-        // Step 2: all other trades — match by buy item name
-        String itemId    = offer.getBaseCostA().getItem().toString();
-        int colon        = itemId.lastIndexOf(':');
-        String itemName  = colon >= 0 ? itemId.substring(colon + 1) : itemId;
+        // Step 2: all other trades - match by buy item name
+        String itemId   = offer.getBaseCostA().getItem().toString();
+        int colon       = itemId.lastIndexOf(':');
+        String itemName = colon >= 0 ? itemId.substring(colon + 1) : itemId;
         for (java.util.Map.Entry<String, TradeDefinition> e : VanillaTrades.getAll().entrySet()) {
             String tid       = e.getKey();
             int slash        = tid.lastIndexOf('/');
