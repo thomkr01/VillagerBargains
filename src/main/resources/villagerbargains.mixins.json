@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.villagerbargains.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "VillagerTradesMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
