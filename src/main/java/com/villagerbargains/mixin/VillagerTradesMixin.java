@@ -6,6 +6,7 @@ import com.villagerbargains.trade.TradeDefinition;
 import com.villagerbargains.trade.VanillaTrades;
 import com.villagerbargains.util.ModLogger;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
@@ -22,8 +23,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * to MINIMUM or MAXIMUM per config.
  *
  * Matching strategy:
- *  1. If sell item is an enchanted_book → look up by enchantment ID (BOOK_REGISTRY)
- *  2. Otherwise                         → look up by buy item name  (REGISTRY)
+ *  1. If sell item is an enchanted_book -> look up by enchantment ID (BOOK_REGISTRY)
+ *  2. Otherwise                         -> look up by buy item name  (REGISTRY)
  *
  * To support new trades: edit VanillaTrades.
  * To change price logic: edit PriceResolver.
@@ -67,17 +68,16 @@ public abstract class VillagerTradesMixin {
      * All other trades: matched by buy item name (step 2).
      */
     private static TradeDefinition resolveDefinition(MerchantOffer offer) {
-        // Step 1: enchanted book — use sell item enchantment as key
+        // Step 1: enchanted book — use sell enchantment as lookup key
         ItemStack result = offer.getResult();
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
-                // Take first enchantment (books always have exactly one from a villager)
                 var enchEntry = enchantments.entrySet().iterator().next();
-                String enchId  = enchEntry.getKey().unwrapKey()
-                        .map(k -> k.location().toString())
-                        .orElse(null);
-                if (enchId != null) {
+                var keyOpt = enchEntry.getKey().unwrapKey();
+                if (keyOpt.isPresent()) {
+                    ResourceLocation loc = keyOpt.get().location();
+                    String enchId  = loc.getNamespace() + ":" + loc.getPath();
                     String sellKey = "enchanted_book:" + enchId;
                     TradeDefinition def = VanillaTrades.getByBook(sellKey);
                     if (def != null) return def;
@@ -86,12 +86,12 @@ public abstract class VillagerTradesMixin {
         }
 
         // Step 2: all other trades — match by buy item name
-        String itemId   = offer.getBaseCostA().getItem().toString();
-        int colon       = itemId.lastIndexOf(':');
-        String itemName = colon >= 0 ? itemId.substring(colon + 1) : itemId;
+        String itemId    = offer.getBaseCostA().getItem().toString();
+        int colon        = itemId.lastIndexOf(':');
+        String itemName  = colon >= 0 ? itemId.substring(colon + 1) : itemId;
         for (java.util.Map.Entry<String, TradeDefinition> e : VanillaTrades.getAll().entrySet()) {
-            String tid      = e.getKey();
-            int slash       = tid.lastIndexOf('/');
+            String tid       = e.getKey();
+            int slash        = tid.lastIndexOf('/');
             String tradeName = slash >= 0 ? tid.substring(slash + 1) : tid;
             if (tradeName.equals(itemName) || tradeName.startsWith(itemName)) {
                 return e.getValue();
