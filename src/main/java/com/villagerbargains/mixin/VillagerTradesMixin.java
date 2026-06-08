@@ -18,22 +18,20 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks into AbstractVillager#updateTrades.
+ * Hooks into AbstractVillager#updateTrades(ServerLevel).
  *
- * Both AbstractVillager and Villager moved to npc.villager.* in MC 26.1.x.
- * We use targets strings (resolved at runtime) so javac never needs to
- * see the classes on the compile classpath.
- *
- * The MerchantOffers field is shadowed by name ("offers") which is stable
- * across MC versions and avoids shadowing a renamed getter method.
+ * In MC 26.1.x both AbstractVillager and Villager moved to npc.villager.*.
+ * The method signature also changed: updateTrades now takes a ServerLevel arg.
+ * We use targets strings (runtime-resolved) so javac never needs these classes.
  */
 @Mixin(targets = "net.minecraft.world.entity.npc.villager.AbstractVillager")
 public abstract class VillagerTradesMixin {
 
-    // "offers" is the Mojang-mapped field name on AbstractVillager.
+    // Shadow the field directly — more stable than shadowing a getter method.
     @Shadow protected MerchantOffers offers;
 
-    @Inject(method = "updateTrades", at = @At("TAIL"))
+    // Full descriptor required because updateTrades is now overloaded with a ServerLevel param.
+    @Inject(method = "updateTrades(Lnet/minecraft/server/level/ServerLevel;)V", at = @At("TAIL"))
     private void villagerbargains$onUpdateTrades(CallbackInfo ci) {
         if (this.offers == null || this.offers.isEmpty()) return;
 
