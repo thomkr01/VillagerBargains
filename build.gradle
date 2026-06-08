@@ -37,9 +37,13 @@ tasks.register('generateTradeResources', GenerateTradeResourcesTask) {
     }
 }
 
-// Every task that reads src/main/resources must run after generateTradeResources
+// processResources always runs after generateTradeResources
 processResources.dependsOn('generateTradeResources')
-tasks.named('sourcesJar').configure { dependsOn('generateTradeResources') }
+
+// sourcesJar is registered lazily by Loom/java plugin, so wire it up after evaluation
+afterEvaluate {
+    tasks.named('sourcesJar').configure { dependsOn('generateTradeResources') }
+}
 
 processResources {
     def version = project.version
