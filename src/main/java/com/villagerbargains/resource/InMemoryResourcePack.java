@@ -1,6 +1,6 @@
 package com.villagerbargains.resource;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
@@ -35,8 +35,8 @@ public final class InMemoryResourcePack extends AbstractPackResources {
     }
 
     @Override
-    public @Nullable IoSupplier<InputStream> getResource(PackType type, ResourceLocation loc) {
-        String path = type.getDirectory() + "/" + loc.getNamespace() + "/" + loc.getPath();
+    public @Nullable IoSupplier<InputStream> getResource(PackType type, Identifier id) {
+        String path = type.getDirectory() + "/" + id.getNamespace() + "/" + id.getPath();
         byte[] data = files.get(path);
         return data != null ? () -> new ByteArrayInputStream(data) : null;
     }
@@ -51,7 +51,7 @@ public final class InMemoryResourcePack extends AbstractPackResources {
                 String relative = path.substring(base.length());
                 if (relative.startsWith(prefix)) {
                     output.accept(
-                        ResourceLocation.fromNamespaceAndPath(namespace, relative),
+                        Identifier.of(namespace, relative),
                         () -> new ByteArrayInputStream(entry.getValue())
                     );
                 }
