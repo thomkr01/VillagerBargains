@@ -10,6 +10,7 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
+import net.minecraft.world.item.trading.ItemCost;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.MerchantOffers;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,15 +18,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.util.Optional;
+
 /**
  * Intercepts villager trade generation at TAIL of updateTrades.
- * Replaces each MerchantOffer with a fresh one whose costA count
- * is our configured price, locked at construction time.
+ * Replaces each MerchantOffer with a fresh one whose costA count is
+ * our configured price, locked at construction time.
  *
- * MC 26.1.x (official Mojang mappings): MerchantOffer fields are raw
- * ItemStack — no ItemCost wrapper.
- * Constructor: MerchantOffer(ItemStack costA, ItemStack costB, ItemStack result,
- *                            int uses, int maxUses, int xp, float priceMultiplier)
+ * MC 26.1.x:
+ *   getBaseCostA()  -> ItemStack  (unwrapped getter)
+ *   getCostB()      -> ItemStack  (empty if no second cost)
+ *   MerchantOffer constructor takes ItemCost for costA, Optional<ItemCost> for costB.
  */
 @Mixin(Villager.class)
 public abstract class VillagerTradesMixin extends AbstractVillager {
@@ -53,8 +56,7 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
     }
 
     /**
-     * Returns a new MerchantOffer with our configured price as costA count.
-     * Returns null if the trade is not in our registry (leave unchanged).
+     * Returns a new MerchantOffer with our price locked in, or null if not in registry.
      */
     private static MerchantOffer buildRepriced(MerchantOffer original) {
         int price = resolvePrice(original);
@@ -64,13 +66,18 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
             return null;
         }
         price = Math.max(1, Math.min(64, price));
-        int oldPrice = original.getBaseCostA().getCount();
 
-        // Build replacement costA with our price; keep the item the same.
-        ItemStack newCostA = original.getBaseCostA().copyWithCount(price);
+        ItemStack origCostA = original.getBaseCostA();
+        int oldPrice = origCostA.getCount();
 
-        // costB: use EMPTY if not present (vanilla uses empty ItemStack for no second cost).
-        ItemStack costB = original.getCostB().isEmpty() ? ItemStack.EMPTY : original.getCostB().copy();
+        // getBaseCostA() returns ItemStack; constructor needs ItemCost — wrap it.
+        ItemCost newCostA = new ItemCost(origCostA.getItem(), price);
+
+        // getCostB() returns ItemStack; constructor needs Optional<ItemCost>.
+        ItemStack origCostB = original.getCostB();
+        Optional<ItemCost> costB = origCostB.isEmpty()
+                ? Optional.empty()
+                : Optional.of(new ItemCost(origCostB.getItem(), origCostB.getCount()));
 
         MerchantOffer fresh = new MerchantOffer(
                 newCostA,
@@ -81,7 +88,6 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
                 original.getXp(),
                 original.getPriceMultiplier()
         );
-        // Prevent reputation/demand from shifting the price after construction.
         fresh.setSpecialPriceDiff(0);
 
         ModLogger.get().info("[VillagerBargains Repriced] '{}' : {} -> {} emeralds",
@@ -89,11 +95,11 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
         return fresh;
     }
 
-    /** Resolves configured price for an offer. Returns -1 if not in registry. */
+    /** Resolves configured price. Returns -1 if not in registry. */
     private static int resolvePrice(MerchantOffer offer) {
         ItemStack result = offer.getResult();
 
-        // Enchanted book path
+        // Enchanted book
         if (!result.isEmpty() && result.getItem() == Items.ENCHANTED_BOOK) {
             ItemEnchantments enchantments = result.get(DataComponents.STORED_ENCHANTMENTS);
             if (enchantments != null && !enchantments.isEmpty()) {
@@ -109,7 +115,7 @@ public abstract class VillagerTradesMixin extends AbstractVillager {
             return -1;
         }
 
-        // Normal trade — try result item id
+        // Normal trade — try result item id first
         String resultId = itemId(result);
         int price = PriceResolver.resolve(resultId);
         if (price >= 0) return price;
