@@ -32,7 +32,7 @@ public final class PriceResolver {
      * Manual override table for enchanted book prices.
      *
      * Key:   enchantment registry id string (e.g. "minecraft:depth_strider").
-     * Value: int[2] of { minPrice, maxPrice }, index 0 = min, index 1 = max.
+     * Value: int[level][2] where index 0 = min price, index 1 = max price.
      *
      * HOW TO ADD AN OVERRIDE:
      *   ENCHANT_OVERRIDES.put("minecraft:enchant_name", new int[][] { {lvl1min, lvl1max}, {lvl2min, lvl2max} });

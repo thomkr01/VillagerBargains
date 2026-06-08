@@ -15,12 +15,9 @@ import java.nio.file.Path;
  * Loads and saves config from config/villagerbargains.json.
  *
  * Two simple options:
- *  - enabled: true/false toggle.
- *  - (internally, prices are always forced to the official vanilla MINIMUM
- *    value for every trade when enabled).
- *
- * Keeping this tiny and focused makes it easy to update for new Minecraft
- * versions without touching the rest of the code.
+ *  - enabled:         true/false toggle.
+ *  - globalPriceMode: MINIMUM or MAXIMUM — forces all trades to the lowest
+ *                     or highest possible vanilla price respectively.
  */
 public final class VillagerBargainsConfig {
     private static final String CONFIG_FILE_NAME = "villagerbargains.json";
@@ -32,11 +29,22 @@ public final class VillagerBargainsConfig {
         return instance;
     }
 
+    // ── Enums ────────────────────────────────────────────────────────────────
+
+    public enum PriceMode {
+        MINIMUM,
+        MAXIMUM
+    }
+
     // ── Config Fields ────────────────────────────────────────────────────────
 
     /** When false, the mod is effectively disabled and prices remain vanilla. */
     @SerializedName("enabled")
     public boolean enabled = true;
+
+    /** Whether to force MINIMUM or MAXIMUM vanilla prices on all trades. */
+    @SerializedName("globalPriceMode")
+    public PriceMode globalPriceMode = PriceMode.MINIMUM;
 
     // ── I/O ─────────────────────────────────────────────────────────────────
 
