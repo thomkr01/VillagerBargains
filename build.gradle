@@ -5,7 +5,7 @@ plugins {
 
 version = project.mod_version
 group = project.maven_group
-archivesBaseName = project.archive_base_name
+base.archivesName = project.archive_base_name
 
 repositories {
     // Add mod repositories here if needed
