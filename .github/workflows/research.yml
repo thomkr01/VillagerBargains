@@ -30,21 +30,14 @@ jobs:
           curl -s -o client.jar "$CLIENT"
           curl -s -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
           mkdir x && cd x && unzip -q ../client.jar 'net/minecraft/*' && cd ..
-          # Classes referencing the additional trade cost component, plus the trade pipeline.
-          grep -rl --include='*.class' -e ADDITIONAL_TRADE_COST -e TradeCost -e VillagerTrade -e MerchantOffer x/net/minecraft/world | sort > list.txt
-          for c in net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction net/minecraft/world/item/enchantment/EnchantmentHelper; do ls x/$c*.class >> list.txt; done
-          sort -u list.txt -o list.txt
+          for p in net/minecraft/world/level/storage/loot/providers/number net/minecraft/world/entity/npc/villager/AbstractVillager; do find x/$p* -name '*.class' 2>/dev/null; done | grep -v '\$' > list.txt || true
           echo "### class list"; cat list.txt
           mkdir sel && (cd x && sed 's#^x/##' ../list.txt | xargs -I{} cp --parents {} ../sel/)
           (cd sel && zip -qr ../sel.jar .)
           mkdir out src
           java -jar vf.jar -e=client.jar sel.jar out > vf.log 2>&1 || tail -20 vf.log
-          ls -la out
           if [ -f out/sel.jar ]; then (cd src && unzip -q ../out/sel.jar); else cp -r out/. src/; fi
           for f in $(find src -name '*.java' | sort); do
-            case "$f" in *trading*|*EnchantRandomly*|*EnchantWithLevels*|*AbstractVillager*|*npc/villager/Villager.java|*WanderingTrader.java|*DataComponents.java|*AdditionalTradeCost*) ;; *) continue;; esac
-            if [ "$(basename $f)" = DataComponents.java ]; then echo "##### $f"; grep -n -i 'trade' $f; continue; fi
-            echo "##### $f"; cat -n "$f"
+            case "$f" in *Uniform*|*AbstractVillager*|*ContextIntProviders.java|*NumberProviders.java|*Sum*|*Add*) echo "##### $f"; cat "$f";; esac
           done
-          echo "### EnchantmentHelper trade/cost lines"; grep -n -i -E 'trade|cost' src/net/minecraft/world/item/enchantment/EnchantmentHelper.java || true
           echo "### all files"; find src -name '*.java' | sort
