@@ -1,120 +1,93 @@
-// Shared build logic. Every versions/<mc> subproject is configured here; the subproject
-// itself only provides a gradle.properties file and any version-specific sources.
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-subprojects {
-    apply plugin: 'net.fabricmc.fabric-loom'
+version = project.mod_version
+group = project.maven_group
+base.archivesName = project.archive_base_name
 
-    def mc = project.minecraft_version
-
-    version = "${rootProject.mod_version}+${mc}"
-    group = rootProject.maven_group
-    base.archivesName = rootProject.archive_base_name
-
-    repositories {
-        maven {
-            name = 'TerraformersMC (Mod Menu)'
-            url = 'https://maven.terraformersmc.com/releases/'
-        }
+repositories {
+    maven {
+        name = 'TerraformersMC (Mod Menu)'
+        url = 'https://maven.terraformersmc.com/releases/'
     }
+}
 
-    loom {
-        splitEnvironmentSourceSets()
+loom {
+    splitEnvironmentSourceSets()
 
-        mods {
-            "villagerbargains" {
-                sourceSet sourceSets.main
-                sourceSet sourceSets.client
-            }
-        }
-
-        runs.configureEach {
-            runDir = "../../run/${mc}"
-        }
-    }
-
-    // In-game tests (src/gametest). Part of `build`; run alone with `./gradlew :<mc>:runGameTest`.
-    fabricApi {
-        configureTests {
-            createSourceSet = true
-            modId = 'villagerbargains-gametest'
-            enableGameTests = true
-            enableClientGameTests = false
-            eula = true
-        }
-    }
-
-    // Shared sources from the repository root, plus this subproject's own src/.
-    sourceSets {
-        main {
-            java.srcDir rootProject.file('src/main/java')
-            resources.srcDir rootProject.file('src/main/resources')
-        }
-        client {
-            java.srcDir rootProject.file('src/client/java')
-            resources.srcDir rootProject.file('src/client/resources')
-        }
-        test {
-            java.srcDir rootProject.file('src/test/java')
-        }
-        gametest {
-            java.srcDir rootProject.file('src/gametest/java')
-            resources.srcDir rootProject.file('src/gametest/resources')
-        }
-    }
-
-    dependencies {
-        minecraft "com.mojang:minecraft:${mc}"
-        // Minecraft 26.x is unobfuscated: no mappings needed.
-        implementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
-
-        // Optional integration: compiled against, never bundled or required.
-        compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-
-        // Only for `runClient` / `runServer` in development (Mod Menu needs Fabric API).
-        localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-        localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
-
-        // Game tests need Fabric API (it brings in fabric-gametest-api-v1).
-        gametestImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-        testImplementation platform('org.junit:junit-bom:5.13.4')
-        testImplementation 'org.junit.jupiter:junit-jupiter'
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    }
-
-    test {
-        useJUnitPlatform()
-    }
-
-    processResources {
-        def props = [
-                version             : project.version,
-                loader_version      : rootProject.loader_version,
-                minecraft_dependency: project.minecraft_dependency,
-        ]
-        inputs.properties props
-        filesMatching('fabric.mod.json') {
-            expand props
-        }
-    }
-
-    tasks.withType(JavaCompile).configureEach {
-        it.options.release = 25
-        it.options.encoding = 'UTF-8'
-    }
-
-    java {
-        withSourcesJar()
-        sourceCompatibility = JavaVersion.VERSION_25
-        targetCompatibility = JavaVersion.VERSION_25
-    }
-
-    jar {
-        from(rootProject.file('LICENSE')) {
-            rename { "${it}_villagerbargains" }
+    mods {
+        "villagerbargains" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
         }
     }
 }
+
+// In-game tests (src/gametest). Part of `build`; run alone with `./gradlew runGameTest`.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'villagerbargains-gametest'
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = true
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Minecraft 26.x is unobfuscated: no mappings needed.
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Optional integration: compiled against, never bundled or required.
+    compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+    // Only for `runClient` / `runServer` in development (Mod Menu needs Fabric API).
+    localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+    // Game tests need Fabric API (it brings in fabric-gametest-api-v1).
+    gametestImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+processResources {
+    def props = [version: project.version, loader_version: project.loader_version]
+    inputs.properties props
+    filesMatching('fabric.mod.json') {
+        expand props
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = 'UTF-8'
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_villagerbargains" }
+    }
+}
+
+// The game tests as a standalone mod jar, so CI can run them on real servers of every
+// supported Minecraft version (not only the version this project compiles against).
+tasks.register('gametestJar', Jar) {
+    archiveClassifier = 'gametest'
+    from sourceSets.gametest.output
+}
+assemble.dependsOn gametestJar

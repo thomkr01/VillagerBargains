@@ -10,12 +10,3 @@ pluginManagement {
 }
 
 rootProject.name = 'VillagerBargains'
-
-// One subproject per supported Minecraft version. Each builds its own jar from the
-// shared sources in src/ plus its own versions/<mc>/src for version-specific code.
-// To support a new version: copy a versions/<mc> folder, update its gradle.properties,
-// fix anything in its src/ that no longer matches, and add it here.
-['26.2', '26.3'].each { mc ->
-    include ":$mc"
-    project(":$mc").projectDir = file("versions/$mc")
-}

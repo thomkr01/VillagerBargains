@@ -1,4 +1,4 @@
-package com.villagerbargains.mixin.version;
+package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -10,7 +10,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Minecraft 26.3: integer {@code minecraft:uniform} provider used inside a trade cost.
+ * <b>Minecraft 26.3 and newer.</b> Integer {@code minecraft:uniform} provider used inside a trade cost.
+ *
+ * <p>The target class does not exist in 26.2;
+ * {@link com.villagerbargains.mixin.VillagerBargainsMixinPlugin} skips this mixin there.
  *
  * <p>Vanilla: {@code getIntUnsafe -> Mth.nextInt(random, min, max)} (both inclusive).
  * The Trade Rebalance experiment prices books as {@code add(11, uniform(0, 35))}, which

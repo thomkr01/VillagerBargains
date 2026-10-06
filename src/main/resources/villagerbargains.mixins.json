@@ -1,10 +1,14 @@
 {
   "required": true,
   "package": "com.villagerbargains.mixin",
+  "plugin": "com.villagerbargains.mixin.VillagerBargainsMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
     "EnchantRandomlyFunctionMixin",
-    "TradeCostMixin"
+    "TradeCostMixin",
+    "provider.LegacyUniformGeneratorMixin",
+    "provider.UniformFloatProviderMixin",
+    "provider.UniformIntProviderMixin"
   ],
   "injectors": {
     "defaultRequire": 1
