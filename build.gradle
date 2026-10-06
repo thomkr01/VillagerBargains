@@ -35,6 +35,17 @@ subprojects {
         }
     }
 
+    // In-game tests (src/gametest). Run with `./gradlew :<mc>:runGameTest`.
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = 'villagerbargains-gametest'
+            enableGameTests = true
+            enableClientGameTests = false
+            eula = true
+        }
+    }
+
     // Shared sources from the repository root, plus this subproject's own src/.
     sourceSets {
         main {
@@ -47,6 +58,10 @@ subprojects {
         }
         test {
             java.srcDir rootProject.file('src/test/java')
+        }
+        gametest {
+            java.srcDir rootProject.file('src/gametest/java')
+            resources.srcDir rootProject.file('src/gametest/resources')
         }
     }
 
@@ -61,6 +76,9 @@ subprojects {
         // Only for `runClient` / `runServer` in development (Mod Menu needs Fabric API).
         localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
         localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+        // Game tests need Fabric API (it brings in fabric-gametest-api-v1).
+        gametestImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
         testImplementation platform('org.junit:junit-bom:5.13.4')
         testImplementation 'org.junit.jupiter:junit-jupiter'
