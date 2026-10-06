@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "villagerbargains-gametest",
+  "version": "1.0.0",
+  "name": "Villager Bargains game tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.villagerbargains.gametest.AllTradesSweepGameTest",
+      "com.villagerbargains.gametest.DemandRuleGameTest",
+      "com.villagerbargains.gametest.EnchantedBookPriceGameTest",
+      "com.villagerbargains.gametest.EnchantedGearPriceGameTest",
+      "com.villagerbargains.gametest.UniformTradeCostGameTest"
+    ]
+  },
+  "depends": {
+    "villagerbargains": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

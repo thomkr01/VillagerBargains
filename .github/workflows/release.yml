@@ -1,0 +1,36 @@
+# Publishes a GitHub release with the mod jar when a tag `v<mod_version>` is pushed
+# (e.g. v2.0.0). One jar supports every Minecraft version listed in fabric.mod.json.
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Check tag matches mod_version
+        run: |
+          MOD_VERSION="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          [ "${GITHUB_REF_NAME}" = "v${MOD_VERSION}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${MOD_VERSION}"; exit 1; }
+          echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
+      - name: Build
+        run: ./gradlew build
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Villager Bargains ${{ env.MOD_VERSION }}
+          body: |
+            Villager Bargains ${{ env.MOD_VERSION }} for **Minecraft 26.2 and 26.3** (one jar for both).
+            Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu is optional.
+          files: build/libs/villagerbargains-${{ env.MOD_VERSION }}.jar
