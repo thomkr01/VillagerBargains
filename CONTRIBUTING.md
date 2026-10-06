@@ -56,5 +56,6 @@ feature/* ← individual features / fixes, branched from develop
 
 ## Releasing
 
-Bump `mod_version` in `gradle.properties`, merge to `main`, then push a tag `v<mod_version>`
-(e.g. `v2.0.0`). The release workflow publishes a GitHub release with the jar.
+Bump `mod_version` in `gradle.properties` and merge to `main` (via `develop`). The release
+workflow sees that `v<mod_version>` does not exist yet, builds the jar, creates the tag and
+publishes the GitHub release. Pushing a tag `v<mod_version>` yourself does the same.
