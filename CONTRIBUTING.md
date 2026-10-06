@@ -20,6 +20,12 @@ feature/* ← individual features / fixes, branched from develop
   (`original.call(...)`) and only then replace the result via `PriceRolls`. Skipping the
   call would shift the random sequence and change other outcomes.
 * **Never widen a range.** A pricing mode picks a value vanilla itself could have produced.
+* **Leave discounts alone.** Reputation/gossip and Hero of the Village (`specialPriceDiff`)
+  stay vanilla in every mode; the demand rule only pins the demand value.
+* **Every trade is covered.** A new or changed price hook must keep `AllTradesSweepGameTest`
+  green (same items and random sequence in every mode, `MINIMUM ≤ NORMAL ≤ MAXIMUM`). Game
+  tests derive their seeds from `villagerbargains.test.seedOffset`, which CI varies across
+  its 3 runs per Minecraft version, so tests must not depend on one particular seed.
 * **One jar.** When vanilla code differs between supported versions, write one mixin per
   variant. Target classes missing from the version you compile against are named as strings
   (`@Mixin(targets = "…")`); `VillagerBargainsMixinPlugin` skips a mixin whose target is absent.
@@ -33,9 +39,10 @@ feature/* ← individual features / fixes, branched from develop
 |--------|---------|
 | Pricing behaviour | `src/main/java/com/villagerbargains/config/PricingMode.java` |
 | Config file format | `src/main/java/com/villagerbargains/config/VillagerBargainsConfig.java` |
-| Hooks | `src/main/java/com/villagerbargains/mixin/` + `villagerbargains.mixins.json` |
+| Price-roll hooks (books, gear, uniform) | `src/main/java/com/villagerbargains/mixin/` + `villagerbargains.mixins.json` |
+| Demand rule | `price/DemandRule.java`, hooks in `mixin/rules/` + `villagerbargains.rules.mixins.json` |
 | Mod Menu screen / texts | `src/client/java/…/client/`, `src/main/resources/assets/villagerbargains/lang/` |
-| Game tests | `src/gametest/java/` (must also run on every supported version) |
+| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest` |
 | Supported Minecraft versions | `"minecraft"` in `fabric.mod.json` + the matrix in `.github/workflows/build.yml` |
 | Compile-against versions, mod version | `gradle.properties` |
 
