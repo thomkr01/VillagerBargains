@@ -30,9 +30,16 @@ jobs:
           curl -s -o client.jar "$CLIENT"
           curl -s -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
           mkdir x && cd x && unzip -q ../client.jar 'net/minecraft/*' && cd ..
-          MM=$([ "${{ matrix.mc }}" = "26.2" ] && echo 20.0.3 || echo 21.0.0)
-          curl -s -o modmenu.jar https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/$MM/modmenu-$MM.jar
-          echo "### modmenu api"; javap -cp modmenu.jar com.terraformersmc.modmenu.api.ModMenuApi com.terraformersmc.modmenu.api.ConfigScreenFactory
-          echo "### gui"
-          javap -cp client.jar net.minecraft.client.gui.screens.Screen net.minecraft.client.gui.components.CycleButton 'net.minecraft.client.gui.components.CycleButton$Builder' 'net.minecraft.client.gui.components.CycleButton$OnValueChange' net.minecraft.client.gui.components.Button 'net.minecraft.client.gui.components.Button$Builder' net.minecraft.client.gui.layouts.HeaderAndFooterLayout net.minecraft.client.gui.layouts.LinearLayout net.minecraft.client.gui.components.MultiLineTextWidget net.minecraft.client.gui.components.Tooltip net.minecraft.network.chat.CommonComponents net.minecraft.client.gui.layouts.Layout net.minecraft.client.gui.layouts.LayoutSettings 2>&1 | grep -v '^  private'
-          echo "### lang dir"; unzip -l client.jar | grep -E 'assets/minecraft/lang/en_us.json' | head -2; ls
+          FAPI=$([ "${{ matrix.mc }}" = "26.2" ] && echo 0.161.0+26.2 || echo 0.161.0+26.3)
+          curl -s -o fapi.jar "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/$FAPI/fabric-api-$FAPI.jar"
+          mkdir fapi && (cd fapi && unzip -q ../fapi.jar 'META-INF/jars/*') && ls fapi/META-INF/jars | grep -i -E 'gametest|test' || true
+          GT=$(ls fapi/META-INF/jars/*gametest*.jar | head -1)
+          echo "### gametest jar $GT"; unzip -l "$GT" | grep -E '\.class|json' | head -40
+          for c in $(unzip -l "$GT" | grep -o 'net/fabricmc/fabric/api/gametest/v1/[A-Za-z$]*\.class' | sed 's#/#.#g;s#\.class$##'); do javap -cp "$GT" "$c"; done
+          echo "### mc"
+          javap -cp client.jar 'net.minecraft.world.level.storage.loot.LootContext$Builder' 'net.minecraft.world.level.storage.loot.LootParams$Builder' net.minecraft.world.entity.npc.villager.VillagerData net.minecraft.gametest.framework.GameTestHelper net.minecraft.world.item.trading.MerchantOffer net.minecraft.world.entity.npc.villager.VillagerProfession net.minecraft.tags.EnchantmentTags net.minecraft.world.item.trading.TradeSets 2>&1 | grep -v '^  private' | grep -v -i 'lambda'
+          javap -cp client.jar net.minecraft.world.entity.npc.villager.Villager | grep -i -E 'villagerdata|updateTrades|class|setOffers|getOffers'
+          javap -cp client.jar net.minecraft.world.entity.EntityTypes 2>&1 | grep -E 'class|VILLAGER' | head; javap -cp client.jar net.minecraft.world.entity.EntityType | grep -E ' VILLAGER;|class ' | head -3
+          javap -cp client.jar net.minecraft.core.registries.Registries | grep -E 'TRADE|VILLAGER'
+          javap -cp client.jar net.minecraft.world.item.trading.TradeSet | head -30
+          echo "### loom configureTests"; curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loom/1.18.2/fabric-loom-1.18.2.jar -o loom.jar; unzip -l loom.jar | grep -i -E 'FabricApiExtension|Test' | head; javap -cp loom.jar net.fabricmc.loom.api.fabricapi.FabricApiExtension 'net.fabricmc.loom.api.fabricapi.GameTestSettings' 2>&1 | head -60
