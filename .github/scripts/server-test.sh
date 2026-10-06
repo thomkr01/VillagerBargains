@@ -4,7 +4,9 @@
 # Runs the released jar on a real Fabric dedicated server for one Minecraft version:
 #   1. boot with ONLY Villager Bargains installed (proves no other mods are needed and every
 #      mixin applies; a hook that no longer matches vanilla crashes this boot), then
-#   2. run the game tests from the -gametest jar on that same version (needs Fabric API).
+#   2. run the game tests from the -gametest jar on that same version (needs Fabric API),
+#      three times on a fresh world each, with seed offsets 0, 100000 and 200000
+#      (-Dvillagerbargains.test.seedOffset) so each run samples different trades.
 set -euo pipefail
 
 MC="$1"
@@ -42,8 +44,21 @@ GAMETEST_API="$(curl -fsS "$MAVEN/fabric-api/$FABRIC_API/fabric-api-$FABRIC_API.
 curl -fsS -o mods/fabric-api.jar "$MAVEN/fabric-api/$FABRIC_API/fabric-api-$FABRIC_API.jar"
 curl -fsS -o mods/fabric-gametest-api.jar "$MAVEN/fabric-gametest-api-v1/$GAMETEST_API/fabric-gametest-api-v1-$GAMETEST_API.jar"
 cp "$TEST_JAR" mods/
-rm -rf world
-timeout 600 java -Xmx2G -Dfabric-api.gametest -jar fabric-server.jar nogui < /dev/null | tee gametest.log
-grep -q 'All [0-9]* required tests passed' gametest.log || fail 'game tests did not pass'
 
-echo "OK: Minecraft $MC"
+# Run the full game tests several times, each on a fresh world and with a different seed
+# offset (see TradeTestSupport#seed), so every run checks a new set of generated trades.
+SEED_OFFSETS=(0 100000 200000)
+RUN=0
+for OFFSET in "${SEED_OFFSETS[@]}"; do
+  RUN=$((RUN + 1))
+  echo "=== 2.$RUN Game tests on Minecraft $MC (run $RUN of ${#SEED_OFFSETS[@]}, seed offset $OFFSET)"
+  rm -rf world
+  LOG="gametest-$OFFSET.log"
+  timeout 600 java -Xmx2G -Dfabric-api.gametest -Dvillagerbargains.test.seedOffset="$OFFSET" \
+    -jar fabric-server.jar nogui < /dev/null | tee "$LOG"
+  grep -q 'All [0-9]* required tests passed' "$LOG" \
+    || fail "game tests did not pass (run $RUN, seed offset $OFFSET)"
+  echo "--- Run $RUN (seed offset $OFFSET): $(grep -o 'All [0-9]* required tests passed' "$LOG" | tail -n1)"
+done
+
+echo "OK: Minecraft $MC (game tests passed with seed offsets ${SEED_OFFSETS[*]})"

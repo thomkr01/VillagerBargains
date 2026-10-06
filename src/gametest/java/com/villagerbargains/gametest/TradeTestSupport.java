@@ -19,12 +19,40 @@ import java.util.function.Supplier;
 final class TradeTestSupport {
     private TradeTestSupport() {}
 
+    /** System property that shifts every sample seed, so CI can repeat the tests on new seeds. */
+    static final String SEED_OFFSET_PROPERTY = "villagerbargains.test.seedOffset";
+
     /**
-     * The seed for sample {@code index}. Never 0: {@code withOptionalRandomSeed(0)} means
-     * "no seed" and would fall back to the world's random source.
+     * Added to every seed. Read once from {@value #SEED_OFFSET_PROPERTY} (default 0, which keeps
+     * the original seeds 1, 2, 3, ...). CI runs the game tests several times with different
+     * offsets (e.g. {@code -Dvillagerbargains.test.seedOffset=100000}) so each run checks a
+     * fresh set of trades while every run stays reproducible.
+     */
+    private static final long SEED_OFFSET = readSeedOffset();
+
+    private static long readSeedOffset() {
+        String value = System.getProperty(SEED_OFFSET_PROPERTY);
+        if (value == null || value.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            // Fail loudly: silently falling back to 0 would rerun the same seeds unnoticed.
+            throw new IllegalArgumentException(
+                    "-D" + SEED_OFFSET_PROPERTY + " must be a whole number, got: " + value, e);
+        }
+    }
+
+    /**
+     * The seed for sample {@code index}: {@code index + 1} plus the seed offset (see
+     * {@link #SEED_OFFSET}). Never 0: {@code withOptionalRandomSeed(0)} means "no seed" and
+     * would fall back to the world's random source, so a (negative) offset that would land
+     * on 0 gives {@link Long#MIN_VALUE} instead.
      */
     static long seed(int index) {
-        return index + 1L;
+        long seed = SEED_OFFSET + index + 1L;
+        return seed != 0L ? seed : Long.MIN_VALUE;
     }
 
     /** A villager to act as the trader ({@code this} entity) for trade generation. */
