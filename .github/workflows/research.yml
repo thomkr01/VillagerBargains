@@ -30,14 +30,9 @@ jobs:
           curl -s -o client.jar "$CLIENT"
           curl -s -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
           mkdir x && cd x && unzip -q ../client.jar 'net/minecraft/*' && cd ..
-          for p in net/minecraft/world/level/storage/loot/providers/number net/minecraft/world/entity/npc/villager/AbstractVillager; do find x/$p* -name '*.class' 2>/dev/null; done | grep -v '\$' > list.txt || true
-          echo "### class list"; cat list.txt
-          mkdir sel && (cd x && sed 's#^x/##' ../list.txt | xargs -I{} cp --parents {} ../sel/)
-          (cd sel && zip -qr ../sel.jar .)
-          mkdir out src
-          java -jar vf.jar -e=client.jar sel.jar out > vf.log 2>&1 || tail -20 vf.log
-          if [ -f out/sel.jar ]; then (cd src && unzip -q ../out/sel.jar); else cp -r out/. src/; fi
-          for f in $(find src -name '*.java' | sort); do
-            case "$f" in *Uniform*|*AbstractVillager*|*ContextIntProviders.java|*NumberProviders.java|*Sum*|*Add*) echo "##### $f"; cat "$f";; esac
-          done
-          echo "### all files"; find src -name '*.java' | sort
+          MM=$([ "${{ matrix.mc }}" = "26.2" ] && echo 20.0.3 || echo 21.0.0)
+          curl -s -o modmenu.jar https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/$MM/modmenu-$MM.jar
+          echo "### modmenu api"; javap -cp modmenu.jar com.terraformersmc.modmenu.api.ModMenuApi com.terraformersmc.modmenu.api.ConfigScreenFactory
+          echo "### gui"
+          javap -cp client.jar net.minecraft.client.gui.screens.Screen net.minecraft.client.gui.components.CycleButton 'net.minecraft.client.gui.components.CycleButton$Builder' 'net.minecraft.client.gui.components.CycleButton$OnValueChange' net.minecraft.client.gui.components.Button 'net.minecraft.client.gui.components.Button$Builder' net.minecraft.client.gui.layouts.HeaderAndFooterLayout net.minecraft.client.gui.layouts.LinearLayout net.minecraft.client.gui.components.MultiLineTextWidget net.minecraft.client.gui.components.Tooltip net.minecraft.network.chat.CommonComponents net.minecraft.client.gui.layouts.Layout net.minecraft.client.gui.layouts.LayoutSettings 2>&1 | grep -v '^  private'
+          echo "### lang dir"; unzip -l client.jar | grep -E 'assets/minecraft/lang/en_us.json' | head -2; ls
