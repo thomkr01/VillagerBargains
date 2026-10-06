@@ -1,9 +1,15 @@
-# Publishes a GitHub release with the mod jar when a tag `v<mod_version>` is pushed
-# (e.g. v2.0.0). One jar supports every Minecraft version listed in fabric.mod.json.
+# Publishes a GitHub release with the mod jar for version `mod_version` (gradle.properties).
+#
+# Two ways to release (one jar supports every Minecraft version in fabric.mod.json):
+#   * Merge to `main` with a new `mod_version`: if no `v<mod_version>` tag exists yet,
+#     this workflow builds the jar, creates the tag and publishes the release.
+#   * Push a tag `v<mod_version>` (e.g. v2.0.0) yourself.
+# A push to `main` whose version is already released does nothing.
 name: Release
 
 on:
   push:
+    branches: [ main ]
     tags: [ 'v*' ]
 
 permissions:
@@ -14,23 +20,48 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - name: Decide whether to release
+        id: version
+        run: |
+          MOD_VERSION="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          TAG="v${MOD_VERSION}"
+          echo "version=${MOD_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            [ "${GITHUB_REF_NAME}" = "${TAG}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${MOD_VERSION}"; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null; then
+            echo "${TAG} is already released; nothing to do."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Releasing ${TAG} from main."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.version.outputs.release == 'true'
+        uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v5
-      - name: Check tag matches mod_version
-        run: |
-          MOD_VERSION="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
-          [ "${GITHUB_REF_NAME}" = "v${MOD_VERSION}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${MOD_VERSION}"; exit 1; }
-          echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
+      - if: steps.version.outputs.release == 'true'
+        uses: gradle/actions/setup-gradle@v5
       - name: Build
+        if: steps.version.outputs.release == 'true'
         run: ./gradlew build
       - name: Publish release
+        if: steps.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: Villager Bargains ${{ env.MOD_VERSION }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Villager Bargains ${{ steps.version.outputs.version }}
           body: |
-            Villager Bargains ${{ env.MOD_VERSION }} for **Minecraft 26.2 and 26.3** (one jar for both).
+            Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
             Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu is optional.
-          files: build/libs/villagerbargains-${{ env.MOD_VERSION }}.jar
+
+            **What's new in 2.0**
+            * Pricing modes MINIMUM (default) / NORMAL / MAXIMUM, in Mod Menu or `config/villagerbargains.json`.
+            * Enchanted books: MINIMUM `2 + 3×level`, MAXIMUM `6 + 13×level` (treasure enchantments doubled).
+            * Enchanted tools, weapons and armor: MINIMUM base + 5, MAXIMUM base + 19; enchantments stay vanilla.
+            * Demand: MINIMUM never raises prices after buying a trade out; MAXIMUM always charges the sold-out surcharge.
+            * Reputation, curing discounts and Hero of the Village work as in vanilla on top of every mode.
+          files: build/libs/villagerbargains-${{ steps.version.outputs.version }}.jar
