@@ -37,8 +37,10 @@ jobs:
           echo "### class list"; cat list.txt
           mkdir sel && (cd x && sed 's#^x/##' ../list.txt | xargs -I{} cp --parents {} ../sel/)
           (cd sel && zip -qr ../sel.jar .)
-          java -jar vf.jar -e=client.jar sel.jar out >/dev/null 2>&1 || true
-          mkdir src && (cd src && unzip -q ../out/sel.jar)
+          mkdir out src
+          java -jar vf.jar -e=client.jar sel.jar out > vf.log 2>&1 || tail -20 vf.log
+          ls -la out
+          if [ -f out/sel.jar ]; then (cd src && unzip -q ../out/sel.jar); else cp -r out/. src/; fi
           for f in $(find src -name '*.java' | sort); do
             case "$f" in *trading*|*EnchantRandomly*|*EnchantWithLevels*|*AbstractVillager*|*npc/villager/Villager.java|*WanderingTrader.java|*DataComponents.java|*AdditionalTradeCost*) ;; *) continue;; esac
             if [ "$(basename $f)" = DataComponents.java ]; then echo "##### $f"; grep -n -i 'trade' $f; continue; fi
