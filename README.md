@@ -1,52 +1,231 @@
-# VillagerBargains
+# Villager Bargains
 
-A Fabric mod for **Minecraft 26.1.2** that locks villager trade prices to either the **minimum** or **maximum** vanilla price — no more RNG.
+A Fabric mod for **Minecraft 26.2 and 26.3** (one jar for both). It makes every villager and
+wandering trader price land on the **cheapest price vanilla can produce** (or the most
+expensive, or plain vanilla), for every profession, and changes nothing else.
 
-## Installation
+Everything else stays vanilla: which trades a villager offers, which enchantments and levels
+appear, stock, XP, gossip/reputation discounts and Hero of the Village. The mod only removes
+the luck from the price: the random price rolls and the demand surcharge.
 
-1. Install [Fabric Loader `0.19.3`](https://fabricmc.net/use/) for Minecraft `26.1.2`
-2. Drop the `.jar` from [Releases](../../releases) into your `mods/` folder
-3. Launch — config is created automatically at `config/villagerbargains.json`
+## Pricing modes
 
-## Configuration
+| Mode | What happens |
+|------|--------------|
+| `MINIMUM` *(default)* | Every random price is the cheapest value vanilla can roll, and demand never raises a price. |
+| `NORMAL` | Untouched vanilla: random prices and the vanilla demand rule. |
+| `MAXIMUM` | Every random price is the most expensive value vanilla can roll, and every trade always carries the demand surcharge of a fully sold-out trade. |
 
-`config/villagerbargains.json`
+Change it in game with [Mod Menu](https://modrinth.com/mod/modmenu) (Mods → Villager
+Bargains → Pricing), or in `config/villagerbargains.json`:
 
 ```json
 {
-  "globalPriceMode": "MINIMUM"
+  "pricing": "MINIMUM"
 }
 ```
 
-Set `globalPriceMode` to either `MINIMUM` or `MAXIMUM`.
+The mode applies to trades a villager unlocks **after** the change. Offers a villager
+already has are saved in the world and keep their rolled price, just like in vanilla; only
+their demand part follows the new mode, from the villager's next restock on.
 
-### Price Modes
+## Which prices are random in vanilla?
 
-| Mode | Description |
-|------|-------------|
-| `MINIMUM` | Cheapest possible price (godroll) — **default** |
-| `MAXIMUM` | Most expensive possible price |
+Since 26.1 villager trades are data-driven. Of the 391 vanilla trades (26.2/26.3, all
+professions plus the wandering trader), about 350 have a **fixed** base price. The random
+price rolls that exist, and what the mod does with them:
 
-## Vanilla Price Reference
+| Trade | Vanilla price | `MINIMUM` | `MAXIMUM` |
+|-------|---------------|-----------|-----------|
+| Enchanted book, level *L* (librarian, 27 trades) | `2 + random(0 … 4 + 10L) + 3L` | `2 + 3L` | `6 + 13L` |
+| …if the enchantment is a treasure one (Mending, Frost Walker, …) | doubled | doubled | doubled |
+| Enchanted tool, weapon or armor (armorer, toolsmith, weaponsmith, fletcher, fisherman, wandering trader; 17 trades) | `base + random(5 … 19)` | `base + 5` | `base + 19` |
+| Any trade whose cost uses a `minecraft:uniform` range (Trade Rebalance experiment, data packs) | random in range | lowest | highest |
 
-Example prices locked in by this mod:
+All results are still clamped to 64 by vanilla. Examples for books:
 
-| Trade | MINIMUM | MAXIMUM |
-|-------|---------|----------|
-| Enchanted Book (Lvl 1) | 5 emeralds | 19 emeralds |
-| Enchanted Book (Lvl 2) | 8 emeralds | 32 emeralds |
-| Enchanted Book (Lvl 3) | 11 emeralds | 45 emeralds |
-| Enchanted Book (Lvl 4) | 14 emeralds | 58 emeralds |
-| Enchanted Book (Lvl 5) | 17 emeralds | 64 emeralds |
-| Diamond Gear | 1 emerald | 3 emeralds |
-| Regular Items | 1 emerald | varies |
+| Book | `MINIMUM` | `MAXIMUM` |
+|------|-----------|-----------|
+| Level 1 (Efficiency I) | 5 | 19 |
+| Level 3 (Sharpness III) | 11 | 45 |
+| Level 5 (Sharpness V) | 17 | 64 |
+| Mending I (treasure) | 10 | 38 |
+
+### Enchanted tools, weapons and armor
+
+In vanilla the price of enchanted gear is `base + levels`, where `levels = random(5 … 19)` is
+also the enchanting power that decides how good the enchantments are. The mod **decouples**
+the two: the enchantments are rolled exactly as in vanilla (same power, same random
+sequence), and only the price is pinned, no matter how strong the item turned out.
+
+| Gear | Vanilla price | `MINIMUM` | `MAXIMUM` |
+|------|---------------|-----------|-----------|
+| Any enchanted gear with base price *B* | `B + 5` … `B + 19` | `B + 5` | `B + 19` |
+| Enchanted diamond sword (weaponsmith, *B* = 8) | 13 … 27 | 13 | 27 |
+
+So in `MINIMUM` a well-enchanted sword costs the same as a barely enchanted one, and in
+`MAXIMUM` a weak roll costs as much as the best one. Both prices are ones vanilla can produce.
+
+## The demand rule
+
+Every trade also has a vanilla **demand** surcharge. The price you pay is
+
+```
+price = clamp(base + max(0, floor(base × demand × priceMultiplier)) + specialPriceDiff, 1, 64)
+```
+
+When the villager restocks, demand changes by `uses − (maxUses − uses)`: a trade you used a
+lot gets more expensive, an unused one drifts back down (the surcharge is never negative).
+Vanilla has no upper bound, so the surcharge can keep growing.
+
+| Mode | Demand |
+|------|--------|
+| `MINIMUM` | Demand never raises a price (demand is kept at 0 or below). |
+| `NORMAL` | Vanilla. |
+| `MAXIMUM` | Always the surcharge of a fully sold-out trade (demand is kept at `maxUses` or above), for new offers and after every restock. |
+
+Example: a trade with base price 10, `maxUses` 12 and price multiplier 0.05
+(`floor(10 × 12 × 0.05) = 6`):
+
+| Situation | `MINIMUM` | `NORMAL` | `MAXIMUM` |
+|-----------|-----------|----------|-----------|
+| Fresh trade, never used | 10 | 10 | 16 |
+| After one full sell-out and a restock (demand 12) | 10 | 16 | 16 |
+
+In `MAXIMUM`, repeated sell-outs can still push demand above `maxUses` as in vanilla.
+
+The mod pins the demand value itself, so the price shown to a player is correct even when
+only the server has the mod. A change of mode reaches existing offers at the villager's next
+restock.
+
+## Vanilla discounts still work
+
+The mod only changes (a) the base price a trade is created with and (b) its demand value.
+Discounts live in a separate field, `specialPriceDiff`, which the mod never touches. The final
+price (vanilla `MerchantOffer#getCostA`) is `clamp(base + demand surcharge + specialPriceDiff, 1, 64)`;
+discounts make `specialPriceDiff` negative, penalties (hurting or killing villagers) positive.
+
+| Source | Effect (vanilla, in every mode) |
+|--------|---------------------------------|
+| Reputation/gossip (trading, curing a zombie villager) | Your reputation with that villager × the trade's price multiplier comes off the price. Curing gives the biggest, long-lasting boost; trading builds it up slowly. |
+| Hero of the Village | An extra discount based on the trade's base price (higher effect level = bigger cut, at least 1 emerald) while you have the effect. |
+
+So discounts stack on top of every mode: `MINIMUM` + a cured villager + Hero of the Village
+is the cheapest price the game allows, and no price drops below 1 emerald. Because Hero's
+discount scales with the base price, its cut is a little smaller in emeralds under `MINIMUM`,
+but the final price is still the lowest.
+
+### What is deliberately *not* changed
+
+* **Reputation/gossip discounts and Hero of the Village** (see above).
+* **Fixed prices.** Trades without a random roll (most of them, including exploration maps)
+  cost the same base price in every mode; only demand differs.
+
+### Why nothing else changes
+
+Vanilla still draws its random number; the mod only replaces the result. The random
+sequence is consumed exactly as in vanilla, so every later roll (other trades, enchantments,
+levels) comes out the same as it would have without the mod.
+
+## Installation
+
+1. Install [Fabric Loader](https://fabricmc.net/use/) `0.19.5` or newer for Minecraft 26.2 or 26.3.
+2. Download `villagerbargains-<version>.jar` from [Releases](../../releases). The same jar works on 26.2 and 26.3.
+3. Put it in your `mods/` folder.
+
+Fabric API is **not** required. Mod Menu is optional (only needed for the in-game screen).
+On a server, only the server needs the mod; its config decides the prices.
+
+## Building
+
+Requires Java 25.
+
+```bash
+./gradlew build        # jar + unit tests + game tests
+./gradlew runClient    # dev client (Minecraft 26.3, with Mod Menu)
+```
+
+The jar ends up in `build/libs/`. The project compiles against the newest supported
+Minecraft version; CI runs the same jar on every supported version.
+
+### How one jar supports several versions
+
+Almost all vanilla code the mod hooks is identical in 26.2 and 26.3. The only difference
+is the `minecraft:uniform` number provider class, which 26.3 split into new classes. Both
+variants are in `mixin/provider/`, and `VillagerBargainsMixinPlugin` applies a mixin only
+when its target class exists in the running game. The server log shows which ones were used:
+
+```
+Applying UniformIntProviderMixin to net.minecraft.…ints.UniformGenerator
+Skipping LegacyUniformGeneratorMixin: net.minecraft.…number.UniformGenerator does not exist in this Minecraft version
+```
+
+## Project layout
+
+```
+src/main/java/com/villagerbargains/
+├── VillagerBargains.java          entrypoint, loads the config
+├── config/PricingMode.java        MINIMUM / NORMAL / MAXIMUM and how each picks a value
+├── config/VillagerBargainsConfig  reads/writes config/villagerbargains.json
+├── price/PriceRolls.java          the one place a vanilla roll becomes the configured value
+├── price/TradeCostScope.java      marks "a trade cost is being calculated"
+├── price/EnchantPowerRolls.java   enchanted gear: vanilla power for the item, pinned value for the price
+├── price/DemandRule.java          how each mode pins a trade's demand
+├── price/DemandPinnable.java      lets VillagerTradeMixin pin a new offer's demand
+└── mixin/
+    ├── VillagerBargainsMixinPlugin    skips hooks whose vanilla class is not in this version
+    ├── EnchantRandomlyFunctionMixin   enchanted book price roll
+    ├── EnchantWithLevelsFunctionMixin enchanted gear price (power roll)
+    ├── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
+    ├── provider/                      uniform number provider hooks (26.2 and 26.3 variants)
+    └── rules/                         demand rule hooks (villagerbargains.rules.mixins.json)
+        ├── MerchantOfferMixin         pins demand on restock; implements DemandPinnable
+        └── VillagerTradeMixin         pins demand when a new offer is created
+src/main/resources/
+├── villagerbargains.mixins.json        price-roll mixins
+└── villagerbargains.rules.mixins.json  demand-rule mixins
+src/client/java/…/client/          Mod Menu screen
+src/test/java/                     unit tests (pricing maths)
+src/gametest/java/…/gametest/      in-game tests: real trade offers in every mode
+├── EnchantedBookPriceGameTest     librarian books
+├── EnchantedGearPriceGameTest     enchanted tools, weapons and armor
+├── DemandRuleGameTest             demand on new offers and restocks
+├── AllTradesSweepGameTest         every trade of every profession + wandering trader
+└── UniformTradeCostGameTest       uniform trade costs vs. other uniform rolls
+```
+
+## Testing
+
+`./gradlew build` runs, for every Minecraft version:
+
+* **Unit tests:** the pricing maths, including the vanilla book formula.
+* **Game tests** on a real game server, with fixed seeds:
+  * **Books:** hundreds of librarian book offers; `MINIMUM`/`MAXIMUM` always give the vanilla
+    extreme, `NORMAL` still varies, and the enchantment, its level and the random numbers
+    drawn afterwards are identical in every mode.
+  * **Enchanted gear:** the price is `base + 5` / `base + 19`, while the enchantments match vanilla.
+  * **Demand rule:** new offers and restocks (including sell-outs) in every mode, checked
+    against the vanilla formula.
+  * **Sweep:** every trade of every profession and the wandering trader, for every villager
+    type and 20 seeds. All modes must produce the same items, enchantments and random
+    sequence, and `MINIMUM ≤ NORMAL ≤ MAXIMUM` for every price. Exploration-map trades are
+    skipped (their price is fixed).
+  * **Uniform:** `uniform` rolls outside trade costs (loot tables, etc.) are left alone.
+
+CI then takes the built jar and, for **each** supported Minecraft version, boots a real Fabric
+dedicated server with only this mod installed and runs the full game-test suite on that
+server **3 times**, each with a different seed offset (system property
+`villagerbargains.test.seedOffset`), so every run checks different offers.
 
 ## Versioning
 
-| Version | Minecraft | Fabric Loader |
-|---------|-----------|---------------|
-| 1.0.1 | 26.1.2 | 0.19.3 |
-| 1.0.0 | 26.1.2 | 0.19.3 |
+`MAJOR.MINOR.PATCH`, e.g. `2.0.0`.
+
+| Part | When it changes |
+|------|----------------|
+| `MAJOR` | Rewrite or breaking change. |
+| `MINOR` | New feature. |
+| `PATCH` | Bug fix or small tweak. |
 
 ## License
 
