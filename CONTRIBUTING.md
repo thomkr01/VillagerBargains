@@ -1,42 +1,50 @@
-# Contributing to VillagerBargains
+# Contributing to Villager Bargains
 
-This project uses a **main / develop** branching model for safe, modular iteration.
-
-## Branch workflow
+## Branches
 
 ```
 main      ← stable releases only
-develop   ← integration branch (all features merge here first)
-feature/* ← individual features / fixes branched from develop
+develop   ← integration branch (features merge here first)
+feature/* ← individual features / fixes, branched from develop
 ```
 
-## Making a change
+1. `git checkout develop && git pull && git checkout -b feature/my-change`
+2. Make the change and run `./gradlew build` (compiles both Minecraft versions and runs the tests).
+3. Open a pull request into `develop`. CI also boots a dedicated server for every version.
+4. When `develop` is ready to release, open a pull request from `develop` into `main`.
 
-1. Branch off `develop`:
-   ```bash
-   git checkout develop
-   git pull
-   git checkout -b feature/my-change
-   ```
-2. Make your changes.
-3. Open a **Pull Request** from `feature/my-change` → `develop`.
-4. Once reviewed and CI passes, merge into `develop`.
-5. When `develop` is stable and ready for a release, open a PR from `develop` → `main`.
+## Design rules
 
-## What belongs where
+* **Only touch the price roll.** Every hook must let vanilla draw its random number first
+  (`original.call(...)`) and only then replace the result via `PriceRolls`. Skipping the
+  call would shift the random sequence and change other outcomes.
+* **Never widen a range.** A pricing mode picks a value vanilla itself could have produced.
+* **Shared first.** Code goes in `src/` unless the vanilla code it targets differs between
+  Minecraft versions; only then does it go in `versions/<minecraft>/src/`.
+* One responsibility per class, a short Javadoc on every class, and each mixin documents the
+  vanilla line it hooks.
 
-| File | What to change |
-|------|----------------|
-| `VanillaTrades.java` | Add/remove/update trade ranges for a new MC version |
-| `gradle.properties` | Bump `minecraft_version`, `loader_version`, `mod_version` |
-| `VillagerBargainsConfig.java` | Add new config fields |
-| `TradeJsonBuilder.java` | Change the JSON structure of an override |
-| `GodRollResourcePack.java` | Change how overrides are built/registered |
-| `InMemoryPack.java` | Change how the pack is served |
-| `.github/workflows/build.yml` | Change CI steps or Java version |
+## Where things live
 
-## Code style
+| Change | File(s) |
+|--------|---------|
+| Pricing behaviour | `src/main/java/com/villagerbargains/config/PricingMode.java` |
+| Config file format | `src/main/java/com/villagerbargains/config/VillagerBargainsConfig.java` |
+| Hook shared by all versions | `src/main/java/com/villagerbargains/mixin/` + `villagerbargains.mixins.json` |
+| Hook for one version | `versions/<mc>/src/main/java/com/villagerbargains/mixin/version/` + that folder's `villagerbargains.version.mixins.json` |
+| Mod Menu screen / texts | `src/client/java/…/client/`, `src/main/resources/assets/villagerbargains/lang/` |
+| Minecraft / Fabric / Mod Menu versions | `versions/<mc>/gradle.properties` |
+| Loader / Loom / mod version | `gradle.properties` |
 
-- Keep each class focused on one responsibility.
-- No magic numbers — use the `TradeDefinition` fields.
-- All public classes/methods get a one-line Javadoc comment.
+## Adding a Minecraft version
+
+1. Copy the closest `versions/<mc>` folder to `versions/<new>` and update its `gradle.properties`
+   (values from <https://fabricmc.net/develop>).
+2. Add `<new>` to the list in `settings.gradle` and to the matrices in `.github/workflows/`.
+3. Run `./gradlew :<new>:build`. If a mixin no longer finds its target, compare the vanilla
+   code it documents with the new version and move the hook into `versions/<new>/src/` if it differs.
+
+## Releasing
+
+Bump `mod_version` in `gradle.properties`, merge to `main`, then push a tag `v<mod_version>`
+(e.g. `v2.0.0`). The release workflow publishes one GitHub release per Minecraft version.

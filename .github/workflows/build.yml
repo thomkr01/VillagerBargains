@@ -5,7 +5,12 @@ name: Build
 
 on:
   push:
+    paths-ignore: [ '**.md', '.github/workflows/research.yml' ]
   pull_request:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
