@@ -1,0 +1,12 @@
+{
+  "villagerbargains.config.title": "Villager Bargains",
+  "villagerbargains.config.pricing": "Pricing",
+  "villagerbargains.config.note": "Applies to trades a villager unlocks from now on. Trades it already offers keep their price.",
+  "villagerbargains.pricing.minimum": "Minimum",
+  "villagerbargains.pricing.minimum.description": "Every random price lands on the cheapest value vanilla can roll.",
+  "villagerbargains.pricing.normal": "Normal",
+  "villagerbargains.pricing.normal.description": "Vanilla behaviour: prices are rolled randomly.",
+  "villagerbargains.pricing.maximum": "Maximum",
+  "villagerbargains.pricing.maximum.description": "Every random price lands on the most expensive value vanilla can roll.",
+  "modmenu.descriptionTranslation.villagerbargains": "Pins the random part of villager trade prices to the cheapest (or most expensive) value vanilla can roll. Nothing else about trading changes."
+}

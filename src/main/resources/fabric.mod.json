@@ -2,25 +2,30 @@
   "schemaVersion": 1,
   "id": "villagerbargains",
   "version": "${version}",
-  "name": "VillagerBargains",
-  "icon": "icon.png",
-  "description": "Locks villager trade prices to MINIMUM (godroll) or MAXIMUM. Simple, configurable, no RNG.",
+  "name": "Villager Bargains",
+  "description": "Pins the random part of villager trade prices to the cheapest (or most expensive) value vanilla can roll. Nothing else about trading changes.",
   "authors": ["Tommy"],
-  "contact": {},
+  "contact": {
+    "sources": "https://github.com/thomkr01/VillagerBargains",
+    "issues": "https://github.com/thomkr01/VillagerBargains/issues"
+  },
   "license": "MIT",
-  "icon": "villagerbargains.png",
+  "icon": "assets/villagerbargains/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": [
-      "com.villagerbargains.VillagerBargainsMod"
-    ]
+    "main": ["com.villagerbargains.VillagerBargains"],
+    "modmenu": ["com.villagerbargains.client.ModMenuIntegration"]
   },
   "mixins": [
-    "villagerbargains.mixins.json"
+    "villagerbargains.mixins.json",
+    "villagerbargains.version.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.3",
-    "fabric-api": "*",
-    "minecraft": "26.1.2"
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_dependency}",
+    "java": ">=25"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }

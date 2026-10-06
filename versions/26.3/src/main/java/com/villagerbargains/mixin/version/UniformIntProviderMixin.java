@@ -1,0 +1,29 @@
+package com.villagerbargains.mixin.version;
+
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.villagerbargains.price.PriceRolls;
+import com.villagerbargains.price.TradeCostScope;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.storage.loot.providers.number.ints.UniformGenerator;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+/**
+ * Minecraft 26.3: integer {@code minecraft:uniform} provider used inside a trade cost.
+ *
+ * <p>Vanilla: {@code getIntUnsafe -> Mth.nextInt(random, min, max)} (both inclusive).
+ * The Trade Rebalance experiment prices books as {@code add(11, uniform(0, 35))}, which
+ * resolves through this method. Outside a {@link TradeCostScope} the roll is unchanged.
+ */
+@Mixin(UniformGenerator.class)
+public abstract class UniformIntProviderMixin {
+    @WrapOperation(
+            method = "getIntUnsafe",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;nextInt(Lnet/minecraft/util/RandomSource;II)I")
+    )
+    private int villagerbargains$resolveIntRoll(RandomSource random, int min, int max, Operation<Integer> original) {
+        int rolled = original.call(random, min, max);
+        return TradeCostScope.isActive() ? PriceRolls.resolve(rolled, min, max) : rolled;
+    }
+}
