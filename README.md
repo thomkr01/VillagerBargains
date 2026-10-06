@@ -171,6 +171,7 @@ src/main/java/com/villagerbargains/
 ├── price/TradeCostScope.java      marks "a trade cost is being calculated"
 ├── price/EnchantPowerRolls.java   enchanted gear: vanilla power for the item, pinned value for the price
 ├── price/DemandRule.java          how each mode pins a trade's demand
+├── price/DemandPinnable.java      lets VillagerTradeMixin pin a new offer's demand
 └── mixin/
     ├── VillagerBargainsMixinPlugin    skips hooks whose vanilla class is not in this version
     ├── EnchantRandomlyFunctionMixin   enchanted book price roll
@@ -178,9 +179,8 @@ src/main/java/com/villagerbargains/
     ├── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
     ├── provider/                      uniform number provider hooks (26.2 and 26.3 variants)
     └── rules/                         demand rule hooks (villagerbargains.rules.mixins.json)
-        ├── MerchantOfferMixin         pins demand on offers and on restock
-        ├── VillagerTradeMixin         pins demand when a new offer is created
-        └── DemandPinnable             interface shared by the demand hooks
+        ├── MerchantOfferMixin         pins demand on restock; implements DemandPinnable
+        └── VillagerTradeMixin         pins demand when a new offer is created
 src/main/resources/
 ├── villagerbargains.mixins.json        price-roll mixins
 └── villagerbargains.rules.mixins.json  demand-rule mixins
