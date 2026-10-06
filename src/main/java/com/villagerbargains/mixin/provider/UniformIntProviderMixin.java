@@ -2,6 +2,7 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.villagerbargains.price.EnchantPowerRolls;
 import com.villagerbargains.price.PriceRolls;
 import com.villagerbargains.price.TradeCostScope;
 import net.minecraft.util.RandomSource;
@@ -17,7 +18,9 @@ import org.spongepowered.asm.mixin.injection.At;
  *
  * <p>Vanilla: {@code getIntUnsafe -> Mth.nextInt(random, min, max)} (both inclusive).
  * The Trade Rebalance experiment prices books as {@code add(11, uniform(0, 35))}, which
- * resolves through this method. Outside a {@link TradeCostScope} the roll is unchanged.
+ * resolves through this method. Outside a {@link TradeCostScope} the roll is unchanged and only
+ * recorded in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}, e.g.
+ * {@code uniform(5, 19)} for enchanted gear trades).
  */
 @Mixin(UniformGenerator.class)
 public abstract class UniformIntProviderMixin {
@@ -27,6 +30,10 @@ public abstract class UniformIntProviderMixin {
     )
     private int villagerbargains$resolveIntRoll(RandomSource random, int min, int max, Operation<Integer> original) {
         int rolled = original.call(random, min, max);
-        return TradeCostScope.isActive() ? PriceRolls.resolve(rolled, min, max) : rolled;
+        if (TradeCostScope.isActive()) {
+            return PriceRolls.resolve(rolled, min, max);
+        }
+        EnchantPowerRolls.record(rolled, min, max); // Enchanted gear price; the roll itself stays vanilla.
+        return rolled;
     }
 }
