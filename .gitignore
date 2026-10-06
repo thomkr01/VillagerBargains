@@ -34,3 +34,6 @@ remapped_*.jar
 # Environment
 .env
 local.properties
+
+# Claude Code agent worktrees (temporary)
+.claude/worktrees/
