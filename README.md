@@ -96,11 +96,26 @@ src/main/java/com/villagerbargains/
     ├── EnchantRandomlyFunctionMixin   enchanted book price roll
     └── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
 src/client/java/…/client/          Mod Menu screen
-src/test/java/                     unit tests
+src/test/java/                     unit tests (pricing maths)
+src/gametest/java/                 in-game tests: real librarian offers in every mode
 versions/<minecraft>/
 ├── gradle.properties              Minecraft, Fabric API and Mod Menu versions
-└── src/main/…/mixin/version/      hooks whose vanilla code differs per version
+├── src/main/…/mixin/version/      hooks whose vanilla code differs per version
+└── src/gametest/…                 game tests for those version-specific hooks
 ```
+
+## Testing
+
+`./gradlew build` runs, for every Minecraft version:
+
+* **Unit tests:** the pricing maths, including the vanilla book formula.
+* **Game tests:** a real game server generates hundreds of librarian book offers with fixed
+  seeds and checks that `MINIMUM`/`MAXIMUM` always give the vanilla extreme, that `NORMAL`
+  still varies, and that the enchantment, its level and the random numbers drawn afterwards
+  are identical in every mode. They also check that `uniform` rolls outside trade costs
+  (loot tables, etc.) are left alone.
+
+CI also boots a real Fabric dedicated server for each version with only this mod installed.
 
 ## Versioning
 
