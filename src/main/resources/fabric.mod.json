@@ -17,7 +17,8 @@
     "modmenu": ["com.villagerbargains.client.ModMenuIntegration"]
   },
   "mixins": [
-    "villagerbargains.mixins.json"
+    "villagerbargains.mixins.json",
+    "villagerbargains.rules.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=${loader_version}",

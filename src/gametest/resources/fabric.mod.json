@@ -6,6 +6,7 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
+      "com.villagerbargains.gametest.DemandRuleGameTest",
       "com.villagerbargains.gametest.EnchantedBookPriceGameTest",
       "com.villagerbargains.gametest.UniformTradeCostGameTest"
     ]
