@@ -3,7 +3,6 @@ plugins {
 }
 
 version = project.mod_version
-group = project.maven_group
 base.archivesName = project.archive_base_name
 
 repositories {
@@ -73,7 +72,6 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }

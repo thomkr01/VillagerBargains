@@ -15,7 +15,7 @@ JARS="$(realpath "$3")"
 LOADER="$(grep '^loader_version=' gradle.properties | cut -d= -f2)"
 MAVEN=https://maven.fabricmc.net/net/fabricmc/fabric-api
 
-MOD_JAR="$(find "$JARS" -name 'villagerbargains-*.jar' ! -name '*-sources.jar' ! -name '*-gametest.jar' | head -n1)"
+MOD_JAR="$(find "$JARS" -name 'villagerbargains-*.jar' ! -name '*-gametest.jar' | head -n1)"
 TEST_JAR="$(find "$JARS" -name 'villagerbargains-*-gametest.jar' | head -n1)"
 [ -n "$MOD_JAR" ] && [ -n "$TEST_JAR" ] || { echo "Jars not found in $JARS"; exit 1; }
 
