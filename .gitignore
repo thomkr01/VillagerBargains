@@ -27,9 +27,6 @@ desktop.ini
 
 # Fabric / Minecraft dev
 run/
-remapped_*.jar
-*-dev.jar
-*-sources.jar
 
 # Environment
 .env
