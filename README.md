@@ -1,6 +1,6 @@
 # Villager Bargains
 
-A Fabric mod for **Minecraft 26.2 and 26.3**. It makes villager prices land on the
+A Fabric mod for **Minecraft 26.2 and 26.3** (one jar for both). It makes villager prices land on the
 **cheapest price vanilla can roll**, and changes nothing else.
 
 Everything stays vanilla: which trades a villager offers, which enchantments and levels
@@ -63,9 +63,7 @@ levels) comes out the same as it would have without the mod.
 ## Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) `0.19.5` or newer for Minecraft 26.2 or 26.3.
-2. Download the jar that matches your Minecraft version from [Releases](../../releases):
-   * `villagerbargains-<version>+26.2.jar` for Minecraft 26.2.x
-   * `villagerbargains-<version>+26.3.jar` for Minecraft 26.3.x
+2. Download `villagerbargains-<version>.jar` from [Releases](../../releases). The same jar works on 26.2 and 26.3.
 3. Put it in your `mods/` folder.
 
 Fabric API is **not** required. Mod Menu is optional (only needed for the in-game screen).
@@ -76,12 +74,24 @@ On a server, only the server needs the mod; its config decides the prices.
 Requires Java 25.
 
 ```bash
-./gradlew build                 # builds both versions
-./gradlew :26.3:build           # builds one version
-./gradlew :26.3:runClient       # starts a dev client (with Mod Menu)
+./gradlew build        # jar + unit tests + game tests
+./gradlew runClient    # dev client (Minecraft 26.3, with Mod Menu)
 ```
 
-Jars end up in `versions/<minecraft>/build/libs/`.
+The jar ends up in `build/libs/`. The project compiles against the newest supported
+Minecraft version; CI runs the same jar on every supported version.
+
+### How one jar supports several versions
+
+Almost all vanilla code the mod hooks is identical in 26.2 and 26.3. The only difference
+is the `minecraft:uniform` number provider class, which 26.3 split into new classes. Both
+variants are in `mixin/provider/`, and `VillagerBargainsMixinPlugin` applies a mixin only
+when its target class exists in the running game. The server log shows which ones were used:
+
+```
+Applying UniformIntProviderMixin to net.minecraft.…ints.UniformGenerator
+Skipping LegacyUniformGeneratorMixin: net.minecraft.…number.UniformGenerator does not exist in this Minecraft version
+```
 
 ## Project layout
 
@@ -92,16 +102,14 @@ src/main/java/com/villagerbargains/
 ├── config/VillagerBargainsConfig  reads/writes config/villagerbargains.json
 ├── price/PriceRolls.java          the one place a vanilla roll becomes the configured value
 ├── price/TradeCostScope.java      marks "a trade cost is being calculated"
-└── mixin/                         hooks shared by every Minecraft version
+└── mixin/
+    ├── VillagerBargainsMixinPlugin    skips hooks whose vanilla class is not in this version
     ├── EnchantRandomlyFunctionMixin   enchanted book price roll
-    └── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
+    ├── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
+    └── provider/                      uniform number provider hooks (26.2 and 26.3 variants)
 src/client/java/…/client/          Mod Menu screen
 src/test/java/                     unit tests (pricing maths)
-src/gametest/java/                 in-game tests: real librarian offers in every mode
-versions/<minecraft>/
-├── gradle.properties              Minecraft, Fabric API and Mod Menu versions
-├── src/main/…/mixin/version/      hooks whose vanilla code differs per version
-└── src/gametest/…                 game tests for those version-specific hooks
+src/gametest/java/                 in-game tests: real trade offers in every mode
 ```
 
 ## Testing
@@ -115,11 +123,12 @@ versions/<minecraft>/
   are identical in every mode. They also check that `uniform` rolls outside trade costs
   (loot tables, etc.) are left alone.
 
-CI also boots a real Fabric dedicated server for each version with only this mod installed.
+CI then takes the built jar and, for **each** supported Minecraft version, boots a real Fabric
+dedicated server with only this mod installed and runs the game tests on that server.
 
 ## Versioning
 
-`MAJOR.MINOR.PATCH+MINECRAFT`, e.g. `2.0.0+26.3`.
+`MAJOR.MINOR.PATCH`, e.g. `2.0.0`.
 
 | Part | When it changes |
 |------|----------------|
