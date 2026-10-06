@@ -144,6 +144,6 @@ public final class EnchantedGearPriceGameTest {
         for (Object2IntMap.Entry<Holder<Enchantment>> entry : enchantments.entrySet()) {
             parts.add(entry.getKey().getRegisteredName() + " " + entry.getIntValue());
         }
-        return BuiltInRegistries.ITEM.getKey(item.getItem()) + parts;
+        return BuiltInRegistries.ITEM.getKey(item.getItem()).toString() + parts;
     }
 }
