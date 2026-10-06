@@ -1,0 +1,48 @@
+# TEMPORARY research job — decompiles vanilla trade classes and lists dependency versions.
+# Will be removed once the mod is written.
+name: Research
+on:
+  push:
+    branches: [ 'claude/**' ]
+    paths: [ '.github/workflows/research.yml' ]
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: [ '26.2', '26.3' ]
+    steps:
+      - uses: actions/setup-java@v4
+        with: { java-version: '25', distribution: 'temurin' }
+      - name: Versions
+        run: |
+          echo "### loader"; curl -s https://meta.fabricmc.net/v2/versions/loader | jq -r '.[0:3][] | "\(.version) stable=\(.stable)"'
+          echo "### fabric-api"; curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -o "<version>[^<]*+${{ matrix.mc }}</version>" | tail -3
+          echo "### loom"; curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin/maven-metadata.xml | grep -o '<version>[^<]*</version>' | tail -5
+          echo "### modmenu"; curl -s "https://api.modrinth.com/v2/project/modmenu/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22${{ matrix.mc }}%22%5D" | jq -r '.[0:3][] | "\(.version_number) \(.game_versions|join(","))"'
+          echo "### modmenu maven"; curl -s https://maven.terraformersmc.com/releases/com/terraformersmc/modmenu/maven-metadata.xml | grep -o '<version>[^<]*</version>' | tail -6
+      - name: Decompile
+        run: |
+          set -e
+          URL=$(curl -s https://piston-meta.mojang.com/mc/game/version_manifest_v2.json | jq -r --arg v "${{ matrix.mc }}" '.versions[] | select(.id==$v) | .url')
+          CLIENT=$(curl -s "$URL" | jq -r '.downloads.client.url')
+          curl -s -o client.jar "$CLIENT"
+          curl -s -o vf.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
+          mkdir x && cd x && unzip -q ../client.jar 'net/minecraft/*' && cd ..
+          # Classes referencing the additional trade cost component, plus the trade pipeline.
+          grep -rl --include='*.class' -e ADDITIONAL_TRADE_COST -e TradeCost -e VillagerTrade -e MerchantOffer x/net/minecraft/world | sort > list.txt
+          for c in net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction net/minecraft/world/item/enchantment/EnchantmentHelper; do ls x/$c*.class >> list.txt; done
+          sort -u list.txt -o list.txt
+          echo "### class list"; cat list.txt
+          mkdir sel && (cd x && sed 's#^x/##' ../list.txt | xargs -I{} cp --parents {} ../sel/)
+          (cd sel && zip -qr ../sel.jar .)
+          java -jar vf.jar -e=client.jar sel.jar out >/dev/null 2>&1 || true
+          mkdir src && (cd src && unzip -q ../out/sel.jar)
+          for f in $(find src -name '*.java' | sort); do
+            case "$f" in *trading*|*EnchantRandomly*|*EnchantWithLevels*|*AbstractVillager*|*npc/villager/Villager.java|*WanderingTrader.java|*DataComponents.java|*AdditionalTradeCost*) ;; *) continue;; esac
+            if [ "$(basename $f)" = DataComponents.java ]; then echo "##### $f"; grep -n -i 'trade' $f; continue; fi
+            echo "##### $f"; cat -n "$f"
+          done
+          echo "### EnchantmentHelper trade/cost lines"; grep -n -i -E 'trade|cost' src/net/minecraft/world/item/enchantment/EnchantmentHelper.java || true
+          echo "### all files"; find src -name '*.java' | sort
