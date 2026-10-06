@@ -2,6 +2,7 @@ package com.villagerbargains.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.villagerbargains.VillagerBargains;
@@ -69,7 +70,12 @@ public final class VillagerBargainsConfig {
         if (!json.has(key)) {
             return DEFAULT_MODE;
         }
-        String value = json.get(key).getAsString();
+        JsonElement element = json.get(key);
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            VillagerBargains.LOGGER.warn("'{}' must be a string like \"MINIMUM\", got {}; using {}", key, element, DEFAULT_MODE);
+            return DEFAULT_MODE;
+        }
+        String value = element.getAsString();
         try {
             return PricingMode.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException e) {

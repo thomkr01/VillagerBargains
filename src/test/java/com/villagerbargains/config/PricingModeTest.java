@@ -45,11 +45,4 @@ class PricingModeTest {
         assertEquals(2 + 3 * level, cheapest);
         assertEquals(6 + 13 * level, dearest);
     }
-
-    @Test
-    void nextCyclesThroughAllModes() {
-        assertEquals(PricingMode.NORMAL, PricingMode.MINIMUM.next());
-        assertEquals(PricingMode.MAXIMUM, PricingMode.NORMAL.next());
-        assertEquals(PricingMode.MINIMUM, PricingMode.MAXIMUM.next());
-    }
 }

@@ -46,10 +46,4 @@ public enum PricingMode {
             case MAXIMUM -> Math.nextDown(highestExclusive);
         };
     }
-
-    /** The next mode in the MINIMUM → NORMAL → MAXIMUM cycle. */
-    public PricingMode next() {
-        PricingMode[] modes = values();
-        return modes[(ordinal() + 1) % modes.length];
-    }
 }
