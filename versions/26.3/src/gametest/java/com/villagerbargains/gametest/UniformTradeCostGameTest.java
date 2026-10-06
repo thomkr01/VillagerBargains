@@ -43,7 +43,8 @@ public final class UniformTradeCostGameTest {
         Villager trader = TradeTestSupport.spawnTrader(helper);
         Set<Integer> values = TradeTestSupport.withMode(PricingMode.MINIMUM, () -> {
             Set<Integer> seen = new HashSet<>();
-            for (long seed = 0; seed < SAMPLES; seed++) {
+            for (int i = 0; i < SAMPLES; i++) {
+                long seed = TradeTestSupport.seed(i);
                 seen.add(UNIFORM_0_35.getIntUnsafe(TradeTestSupport.tradeContext(helper, trader, seed)));
             }
             return seen;
@@ -54,7 +55,8 @@ public final class UniformTradeCostGameTest {
 
     private static void assertAllCosts(GameTestHelper helper, Villager trader, TradeCost cost, PricingMode mode, int expected) {
         TradeTestSupport.withMode(mode, () -> {
-            for (long seed = 0; seed < SAMPLES; seed++) {
+            for (int i = 0; i < SAMPLES; i++) {
+                long seed = TradeTestSupport.seed(i);
                 LootContext context = TradeTestSupport.tradeContext(helper, trader, seed);
                 helper.assertValueEqual(cost.toItemCost(context, 0).count(), expected, mode + " trade cost for seed " + seed);
             }

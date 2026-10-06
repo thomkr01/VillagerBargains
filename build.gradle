@@ -35,7 +35,7 @@ subprojects {
         }
     }
 
-    // In-game tests (src/gametest). Run with `./gradlew :<mc>:runGameTest`.
+    // In-game tests (src/gametest). Part of `build`; run alone with `./gradlew :<mc>:runGameTest`.
     fabricApi {
         configureTests {
             createSourceSet = true

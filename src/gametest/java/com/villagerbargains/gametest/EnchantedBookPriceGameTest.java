@@ -62,8 +62,9 @@ public final class EnchantedBookPriceGameTest {
         Set<Integer> pricesForLevelOne = new HashSet<>();
         for (Sample sample : generate(helper, PricingMode.NORMAL)) {
             int factor = sample.doubled() ? 2 : 1;
-            helper.assertValueInBetween(sample.price(),
+            helper.assertValueInBetween(
                     clamp((2 + 3 * sample.level()) * factor),
+                    sample.price(),
                     clamp((6 + 13 * sample.level()) * factor),
                     "NORMAL price of " + sample.book() + " " + sample.level());
             if (sample.level() == 1 && !sample.doubled()) {
@@ -82,9 +83,9 @@ public final class EnchantedBookPriceGameTest {
             for (int i = 0; i < SAMPLES; i++) {
                 Sample a = normal.get(i);
                 Sample b = pinned.get(i);
-                helper.assertValueEqual(b.book(), a.book(), mode + " changed the enchantment for seed " + i);
-                helper.assertValueEqual(b.level(), a.level(), mode + " changed the level for seed " + i);
-                helper.assertValueEqual(b.nextRandom(), a.nextRandom(), mode + " changed the random sequence for seed " + i);
+                helper.assertValueEqual(b.book(), a.book(), mode + " enchantment for sample " + i);
+                helper.assertValueEqual(b.level(), a.level(), mode + " enchantment level for sample " + i);
+                helper.assertValueEqual(b.nextRandom(), a.nextRandom(), mode + " next random value for sample " + i);
             }
         }
         helper.succeed();
@@ -96,7 +97,8 @@ public final class EnchantedBookPriceGameTest {
         Villager trader = TradeTestSupport.spawnTrader(helper);
         return TradeTestSupport.withMode(mode, () -> {
             List<Sample> samples = new ArrayList<>();
-            for (long seed = 0; seed < SAMPLES; seed++) {
+            for (int i = 0; i < SAMPLES; i++) {
+                long seed = TradeTestSupport.seed(i);
                 LootContext context = TradeTestSupport.tradeContext(helper, trader, seed);
                 MerchantOffer offer = trade.value().getOffer(context);
                 if (offer == null) {

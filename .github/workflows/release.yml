@@ -1,0 +1,43 @@
+# Publishes one GitHub release per supported Minecraft version when a tag `v<mod_version>`
+# is pushed, e.g. tag v2.0.0 -> releases "2.0.0+26.2" and "2.0.0+26.3", each with its own jar.
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        minecraft: [ '26.2', '26.3' ]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Check tag matches mod_version
+        run: |
+          MOD_VERSION="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
+          [ "${GITHUB_REF_NAME}" = "v${MOD_VERSION}" ] || { echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${MOD_VERSION}"; exit 1; }
+          echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
+      - name: Build
+        run: ./gradlew :${{ matrix.minecraft }}:build
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.MOD_VERSION }}+${{ matrix.minecraft }}
+          target_commitish: ${{ github.sha }}
+          name: Villager Bargains ${{ env.MOD_VERSION }} for Minecraft ${{ matrix.minecraft }}
+          body: |
+            Villager Bargains ${{ env.MOD_VERSION }} for **Minecraft ${{ matrix.minecraft }}** (Fabric Loader 0.19.5+, Java 25).
+
+            Fabric API is not required. Mod Menu is optional (adds the in-game Pricing setting).
+          files: |
+            versions/${{ matrix.minecraft }}/build/libs/villagerbargains-${{ env.MOD_VERSION }}+${{ matrix.minecraft }}.jar

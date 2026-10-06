@@ -19,6 +19,14 @@ import java.util.function.Supplier;
 final class TradeTestSupport {
     private TradeTestSupport() {}
 
+    /**
+     * The seed for sample {@code index}. Never 0: {@code withOptionalRandomSeed(0)} means
+     * "no seed" and would fall back to the world's random source.
+     */
+    static long seed(int index) {
+        return index + 1L;
+    }
+
     /** A villager to act as the trader ({@code this} entity) for trade generation. */
     static Villager spawnTrader(GameTestHelper helper) {
         return helper.spawn(EntityTypes.VILLAGER, new BlockPos(1, 1, 1));
