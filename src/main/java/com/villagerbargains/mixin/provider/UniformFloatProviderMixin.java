@@ -2,8 +2,8 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.villagerbargains.price.PriceRolls;
-import com.villagerbargains.price.TradeCostScope;
+import com.villagerbargains.config.VillagerBargainsConfig;
+import com.villagerbargains.price.ThreadScope;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.storage.loot.providers.number.floats.UniformGenerator;
 import org.spongepowered.asm.mixin.Mixin;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * {@link com.villagerbargains.mixin.VillagerBargainsMixinPlugin} skips this mixin there.
  *
  * <p>Vanilla: {@code getFloatUnsafe -> Mth.nextFloat(random, min, max)} in {@code [min, max)}.
- * Outside a {@link TradeCostScope} the roll is unchanged.
+ * Outside {@link ThreadScope#TRADE_COST} the roll is unchanged.
  */
 @Mixin(UniformGenerator.class)
 public abstract class UniformFloatProviderMixin {
@@ -27,6 +27,6 @@ public abstract class UniformFloatProviderMixin {
     )
     private float villagerbargains$resolveFloatRoll(RandomSource random, float min, float max, Operation<Float> original) {
         float rolled = original.call(random, min, max);
-        return TradeCostScope.isActive() ? PriceRolls.resolve(rolled, min, max) : rolled;
+        return ThreadScope.TRADE_COST.isActive() ? VillagerBargainsConfig.pricingMode().pick(rolled, min, max) : rolled;
     }
 }

@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
  * Mod entrypoint.
  *
  * <p>All behaviour lives in small mixins (see {@code com.villagerbargains.mixin}) that ask
- * {@link com.villagerbargains.price.PriceRolls} how to treat each vanilla price roll.
+ * the configured {@link com.villagerbargains.config.PricingMode} how to treat each vanilla price roll.
  * This class only loads the config so problems with it show up at startup.
  */
 public final class VillagerBargains implements ModInitializer {

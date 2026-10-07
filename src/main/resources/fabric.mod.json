@@ -3,9 +3,10 @@
   "id": "villagerbargains",
   "version": "${version}",
   "name": "Villager Bargains",
-  "description": "Pins the random part of villager trade prices to the cheapest (or most expensive) value vanilla can roll. Nothing else about trading changes.",
-  "authors": ["Tommy"],
+  "description": "Pins the random part of villager trade prices to the cheapest (or most expensive) value vanilla can roll. Optionally, traded enchanted books always get their lowest or highest level. Nothing else about trading changes.",
+  "authors": ["Thomas"],
   "contact": {
+    "homepage": "https://github.com/thomkr01/VillagerBargains",
     "sources": "https://github.com/thomkr01/VillagerBargains",
     "issues": "https://github.com/thomkr01/VillagerBargains/issues"
   },

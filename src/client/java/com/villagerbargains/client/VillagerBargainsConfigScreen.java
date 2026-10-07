@@ -12,11 +12,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
+import java.util.Locale;
+import java.util.function.Consumer;
+
 /**
- * Config screen opened from Mod Menu: one button that cycles MINIMUM → NORMAL → MAXIMUM.
+ * Config screen opened from Mod Menu: two buttons that cycle MINIMUM → NORMAL → MAXIMUM, one for
+ * the pricing mode and one for the level of traded enchanted books.
  *
- * <p>The choice is saved as soon as it changes. It applies to trades generated from then on;
- * offers a villager already has are stored in the world and keep their price.
+ * <p>Each choice is saved as soon as it changes. It applies to trades generated from then on;
+ * offers a villager already has are stored in the world and keep their price and level.
  */
 public final class VillagerBargainsConfigScreen extends Screen {
     private static final int CONTENT_WIDTH = 260;
@@ -37,7 +41,10 @@ public final class VillagerBargainsConfigScreen extends Screen {
 
         LinearLayout contents = layout.addToContents(LinearLayout.vertical().spacing(12));
         contents.defaultCellSetting().alignHorizontallyCenter();
-        contents.addChild(pricingButton());
+        contents.addChild(modeButton("pricing", VillagerBargainsConfig.pricingMode(),
+                VillagerBargainsConfig::setPricingMode));
+        contents.addChild(modeButton("bookLevels", VillagerBargainsConfig.bookLevelMode(),
+                VillagerBargainsConfig::setBookLevelMode));
         contents.addChild(new MultiLineTextWidget(Component.translatable("villagerbargains.config.note"), font)
                 .setMaxWidth(CONTENT_WIDTH)
                 .setCentered(true));
@@ -48,13 +55,17 @@ public final class VillagerBargainsConfigScreen extends Screen {
         repositionElements();
     }
 
-    private CycleButton<PricingMode> pricingButton() {
-        return CycleButton.builder(VillagerBargainsConfigScreen::modeName, VillagerBargainsConfig.pricingMode())
+    /**
+     * A button for one setting. Its label is {@code villagerbargains.config.<setting>}, each value
+     * is named by {@code villagerbargains.<setting>.<mode>} with a {@code .description} tooltip.
+     */
+    private CycleButton<PricingMode> modeButton(String setting, PricingMode current, Consumer<PricingMode> onChange) {
+        return CycleButton.builder((PricingMode mode) -> modeText(setting, mode, ""), current)
                 .withValues(PricingMode.values())
-                .withTooltip(mode -> Tooltip.create(modeDescription(mode)))
+                .withTooltip(mode -> Tooltip.create(modeText(setting, mode, ".description")))
                 .create(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT,
-                        Component.translatable("villagerbargains.config.pricing"),
-                        (button, mode) -> VillagerBargainsConfig.setPricingMode(mode));
+                        Component.translatable("villagerbargains.config." + setting),
+                        (button, mode) -> onChange.accept(mode));
     }
 
     @Override
@@ -67,15 +78,7 @@ public final class VillagerBargainsConfigScreen extends Screen {
         minecraft.gui.setScreen(parent);
     }
 
-    private static Component modeName(PricingMode mode) {
-        return Component.translatable("villagerbargains.pricing." + key(mode));
-    }
-
-    private static Component modeDescription(PricingMode mode) {
-        return Component.translatable("villagerbargains.pricing." + key(mode) + ".description");
-    }
-
-    private static String key(PricingMode mode) {
-        return mode.name().toLowerCase(java.util.Locale.ROOT);
+    private static Component modeText(String setting, PricingMode mode, String suffix) {
+        return Component.translatable("villagerbargains." + setting + "." + mode.name().toLowerCase(Locale.ROOT) + suffix);
     }
 }
