@@ -35,12 +35,6 @@ fabricApi {
     }
 }
 
-// Java 25 warns when a library calls the deprecated sun.misc.Unsafe memory methods; JOML,
-// bundled with Minecraft, does. Allow them for every game run (client, server, game tests).
-loom.runs.configureEach {
-    vmArg '--sun-misc-unsafe-memory-access=allow'
-}
-
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     // Minecraft 26.x is unobfuscated: no mappings needed.
