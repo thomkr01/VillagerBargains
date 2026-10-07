@@ -19,7 +19,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Decide whether to release
         id: version
         run: |
@@ -38,18 +38,20 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.version.outputs.release == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
       - if: steps.version.outputs.release == 'true'
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       - name: Build
         if: steps.version.outputs.release == 'true'
         run: ./gradlew build
       - name: Publish release
         if: steps.version.outputs.release == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
@@ -58,7 +60,12 @@ jobs:
             Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
             Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu is optional.
 
-            **What's new in 2.0**
+            **What's new in 2.1**
+            * New optional `bookLevels` setting (MINIMUM / NORMAL default / MAXIMUM) pins the level of enchanted books sold by villagers, e.g. always Sharpness V. In Mod Menu → Villager Bargains → Book levels, or `config/villagerbargains.json`. Loot books and gear are unchanged.
+            * Mod info now lists Thomas as author and links the project homepage.
+            * Internal cleanup, a real game client test of the settings screen on CI, and a fix for the Java 25 `sun.misc.Unsafe` warning in CI server runs.
+
+            **From 2.0**
             * Pricing modes MINIMUM (default) / NORMAL / MAXIMUM, in Mod Menu or `config/villagerbargains.json`.
             * Enchanted books: MINIMUM `2 + 3×level`, MAXIMUM `6 + 13×level` (treasure enchantments doubled).
             * Enchanted tools, weapons and armor: MINIMUM base + 5, MAXIMUM base + 19; enchantments stay vanilla.
