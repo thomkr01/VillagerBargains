@@ -254,7 +254,7 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
     drawn afterwards are identical in every mode.
   * **Book levels:** with `bookLevels` `MINIMUM`/`MAXIMUM` every traded book has the lowest or
     highest level, `NORMAL` still varies, the enchantment and the random sequence stay vanilla,
-    the price matches the level sold, and books outside trades keep vanilla levels.
+    the price matches the level sold, and enchanted books in chest loot keep vanilla levels.
   * **Enchanted gear:** the price is `base + 5` / `base + 19`, while the enchantments match vanilla.
   * **Demand rule:** new offers and restocks (including sell-outs) in every mode, checked
     against the vanilla formula.

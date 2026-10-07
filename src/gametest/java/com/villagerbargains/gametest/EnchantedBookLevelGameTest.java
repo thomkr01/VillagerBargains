@@ -16,8 +16,11 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.VillagerTrade;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
@@ -26,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -37,7 +39,7 @@ import java.util.Set;
  *   <li>NORMAL still varies the level like vanilla;</li>
  *   <li>the enchantment and the random sequence afterwards are identical in every level mode;</li>
  *   <li>the price is the vanilla price for the level that is sold, in every pricing mode;</li>
- *   <li>{@code enchant_randomly} outside a trade keeps its vanilla level.</li>
+ *   <li>enchanted books in chest loot keep their vanilla level.</li>
  * </ul>
  */
 public final class EnchantedBookLevelGameTest {
@@ -115,27 +117,31 @@ public final class EnchantedBookLevelGameTest {
     }
 
     /**
-     * Runs the same librarian trade definition, but without the
-     * {@code ADDITIONAL_COST_COMPONENT_ALLOWED} parameter, so its {@code enchant_randomly} runs the
-     * way it does for chest loot (the mixin only treats a run as a trade when that parameter is
-     * present). This reuses the trade's own vanilla {@code enchant_randomly} instead of building
-     * the function by hand, like {@code UniformTradeCostGameTest} reuses a trade cost.
+     * Rolls the vanilla simple dungeon chest (which contains randomly enchanted books) with the
+     * same seeds in NORMAL and MAXIMUM: the loot must be identical, because only trades are pinned.
      */
     @GameTest
-    public void nonTradeEnchantRandomlyKeepsVanillaLevels(GameTestHelper helper) {
-        List<Sample> normal = generateOutsideTrade(helper, PricingMode.NORMAL);
-        List<Sample> maximum = generateOutsideTrade(helper, PricingMode.MAXIMUM);
+    public void chestLootKeepsVanillaLevels(GameTestHelper helper) {
+        List<List<ItemStack>> normal = rollDungeonChest(helper, PricingMode.NORMAL);
+        List<List<ItemStack>> maximum = rollDungeonChest(helper, PricingMode.MAXIMUM);
         boolean belowMaximum = false;
         for (int i = 0; i < SAMPLES; i++) {
-            Sample a = normal.get(i);
-            Sample b = maximum.get(i);
-            helper.assertValueEqual(b.book(), a.book(), "non-trade enchantment for sample " + i);
-            helper.assertValueEqual(b.level(), a.level(), "non-trade enchantment level for sample " + i);
-            helper.assertValueEqual(b.nextRandom(), a.nextRandom(), "non-trade next random value for sample " + i);
-            belowMaximum |= b.level() < b.maxLevel();
+            List<ItemStack> a = normal.get(i);
+            List<ItemStack> b = maximum.get(i);
+            helper.assertValueEqual(b.size(), a.size(), "chest loot size for sample " + i);
+            for (int j = 0; j < a.size(); j++) {
+                helper.assertTrue(ItemStack.matches(a.get(j), b.get(j)),
+                        "chest loot for sample " + i + " differs: " + a.get(j) + " vs " + b.get(j));
+                ItemEnchantments stored = b.get(j).get(DataComponents.STORED_ENCHANTMENTS);
+                if (stored != null) {
+                    for (Object2IntMap.Entry<Holder<Enchantment>> entry : stored.entrySet()) {
+                        belowMaximum |= entry.getIntValue() < entry.getKey().value().getMaxLevel();
+                    }
+                }
+            }
         }
         // Without this the comparison above could pass by accident if every roll were already the maximum.
-        helper.assertTrue(belowMaximum, "MAXIMUM book levels must not raise non-trade levels, but every level was the maximum");
+        helper.assertTrue(belowMaximum, "MAXIMUM book levels must not raise chest loot levels, but every book was at its maximum");
         helper.succeed();
     }
 
@@ -152,30 +158,22 @@ public final class EnchantedBookLevelGameTest {
         }));
     }
 
-    private static List<Sample> generateOutsideTrade(GameTestHelper helper, PricingMode levels) {
-        Holder<VillagerTrade> trade = librarianBook(helper);
-        Villager trader = TradeTestSupport.spawnTrader(helper);
+    private static List<List<ItemStack>> rollDungeonChest(GameTestHelper helper, PricingMode levels) {
+        LootTable table = helper.getLevel().getServer().reloadableRegistries().getLootTable(BuiltInLootTables.SIMPLE_DUNGEON);
+        LootParams params = new LootParams.Builder(helper.getLevel())
+                .withParameter(LootContextParams.ORIGIN, Vec3.ZERO)
+                .create(LootContextParamSets.CHEST);
         return TradeTestSupport.withBookLevelMode(levels, () -> {
-            List<Sample> samples = new ArrayList<>();
+            List<List<ItemStack>> rolls = new ArrayList<>();
             for (int i = 0; i < SAMPLES; i++) {
-                long seed = TradeTestSupport.seed(i);
-                samples.add(sample(helper, trade, nonTradeContext(helper, trader, seed), seed));
+                rolls.add(List.copyOf(table.getRandomItems(params, TradeTestSupport.seed(i))));
             }
-            return samples;
+            return rolls;
         });
     }
 
     private static Holder<VillagerTrade> librarianBook(GameTestHelper helper) {
         return helper.getLevel().registryAccess().lookupOrThrow(Registries.VILLAGER_TRADE).getOrThrow(LIBRARIAN_BOOK);
-    }
-
-    /** Like {@link TradeTestSupport#tradeContext}, but without {@code ADDITIONAL_COST_COMPONENT_ALLOWED}. */
-    private static LootContext nonTradeContext(GameTestHelper helper, Villager trader, long seed) {
-        LootParams params = new LootParams.Builder(helper.getLevel())
-                .withParameter(LootContextParams.ORIGIN, trader.position())
-                .withParameter(LootContextParams.THIS_ENTITY, trader)
-                .create(LootContextParamSets.VILLAGER_TRADE);
-        return new LootContext.Builder(params).withOptionalRandomSeed(seed).create(Optional.empty());
     }
 
     private static Sample sample(GameTestHelper helper, Holder<VillagerTrade> trade, LootContext context, long seed) {
