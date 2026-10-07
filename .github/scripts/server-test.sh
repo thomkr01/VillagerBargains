@@ -25,11 +25,15 @@ curl -fsS -o fabric-server.jar "https://meta.fabricmc.net/v2/versions/loader/${M
 echo 'eula=true' > eula.txt
 printf 'online-mode=false\nlevel-type=minecraft\\:flat\n' > server.properties
 
+# Java 25 warns when a library calls the deprecated sun.misc.Unsafe memory methods; JOML,
+# bundled with Minecraft, does. Allow them explicitly so the logs stay free of that warning.
+JAVA=(java -Xmx2G --sun-misc-unsafe-memory-access=allow)
+
 fail() { echo "FAIL (Minecraft $MC): $1"; exit 1; }
 
 echo "=== 1. Boot Minecraft $MC with only $(basename "$MOD_JAR")"
 cp "$MOD_JAR" mods/
-timeout 600 java -Xmx2G -jar fabric-server.jar nogui < <(
+timeout 600 "${JAVA[@]}" -jar fabric-server.jar nogui < <(
   until grep -q 'Done (' logs/latest.log 2>/dev/null; do sleep 2; done
   echo stop
 ) | tee boot.log
@@ -54,7 +58,7 @@ for OFFSET in "${SEED_OFFSETS[@]}"; do
   echo "=== 2.$RUN Game tests on Minecraft $MC (run $RUN of ${#SEED_OFFSETS[@]}, seed offset $OFFSET)"
   rm -rf world
   LOG="gametest-$OFFSET.log"
-  timeout 600 java -Xmx2G -Dfabric-api.gametest -Dvillagerbargains.test.seedOffset="$OFFSET" \
+  timeout 600 "${JAVA[@]}" -Dfabric-api.gametest -Dvillagerbargains.test.seedOffset="$OFFSET" \
     -jar fabric-server.jar nogui < /dev/null | tee "$LOG"
   grep -q 'All [0-9]* required tests passed' "$LOG" \
     || fail "game tests did not pass (run $RUN, seed offset $OFFSET)"
