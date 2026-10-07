@@ -42,9 +42,10 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v5
+      # The runner has no OpenGL/Vulkan drivers; Mesa renders in software. Loom adds Xvfb itself on CI.
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libglx-mesa0 mesa-vulkan-drivers
       - name: Run client game test
-        # xvfb-run's default 8-bit screen has no OpenGL visual; the game needs 24-bit colour.
-        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --stacktrace
+        run: ./gradlew runClientGameTest --stacktrace
       - uses: actions/upload-artifact@v5
         if: always()
         with:
