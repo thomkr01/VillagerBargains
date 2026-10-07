@@ -19,7 +19,7 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Decide whether to release
         id: version
         run: |
@@ -38,18 +38,20 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.version.outputs.release == 'true'
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
       - if: steps.version.outputs.release == 'true'
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
       - name: Build
         if: steps.version.outputs.release == 'true'
         run: ./gradlew build
       - name: Publish release
         if: steps.version.outputs.release == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
