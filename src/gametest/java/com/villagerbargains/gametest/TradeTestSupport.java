@@ -15,7 +15,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-/** Helpers shared by the game tests: seeded trade contexts and temporary pricing modes. */
+/** Helpers shared by the game tests: seeded trade contexts and temporary pricing / book level modes. */
 final class TradeTestSupport {
     private TradeTestSupport() {}
 
@@ -81,6 +81,17 @@ final class TradeTestSupport {
             return action.get();
         } finally {
             VillagerBargainsConfig.setPricingMode(previous);
+        }
+    }
+
+    /** Runs {@code action} with book level mode {@code mode} active, then restores the previous one. */
+    static <T> T withBookLevelMode(PricingMode mode, Supplier<T> action) {
+        PricingMode previous = VillagerBargainsConfig.bookLevelMode();
+        VillagerBargainsConfig.setBookLevelMode(mode);
+        try {
+            return action.get();
+        } finally {
+            VillagerBargainsConfig.setBookLevelMode(previous);
         }
     }
 }

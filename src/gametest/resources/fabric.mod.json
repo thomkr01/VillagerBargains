@@ -8,6 +8,7 @@
     "fabric-gametest": [
       "com.villagerbargains.gametest.AllTradesSweepGameTest",
       "com.villagerbargains.gametest.DemandRuleGameTest",
+      "com.villagerbargains.gametest.EnchantedBookLevelGameTest",
       "com.villagerbargains.gametest.EnchantedBookPriceGameTest",
       "com.villagerbargains.gametest.EnchantedGearPriceGameTest",
       "com.villagerbargains.gametest.UniformTradeCostGameTest"
