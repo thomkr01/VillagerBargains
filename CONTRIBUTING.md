@@ -18,7 +18,9 @@ feature/* ← individual features / fixes, branched from develop
 
 * **Only touch the price roll.** Every hook must let vanilla draw its random number first
   (`original.call(...)`) and only then replace the result via `PriceRolls`. Skipping the
-  call would shift the random sequence and change other outcomes.
+  call would shift the random sequence and change other outcomes. The one documented
+  exception is the level roll of traded enchanted books (`bookLevels`, via `BookLevels`),
+  which follows the same rule: roll first, then replace, and only inside a trade.
 * **Never widen a range.** A pricing mode picks a value vanilla itself could have produced.
 * **Leave discounts alone.** Reputation/gossip and Hero of the Village (`specialPriceDiff`)
   stay vanilla in every mode; the demand rule only pins the demand value.
@@ -40,9 +42,10 @@ feature/* ← individual features / fixes, branched from develop
 | Pricing behaviour | `src/main/java/com/villagerbargains/config/PricingMode.java` |
 | Config file format | `src/main/java/com/villagerbargains/config/VillagerBargainsConfig.java` |
 | Price-roll hooks (books, gear, uniform) | `src/main/java/com/villagerbargains/mixin/` + `villagerbargains.mixins.json` |
+| Book level roll (the one non-price roll) | `price/BookLevels.java`, hook in `mixin/EnchantRandomlyFunctionMixin.java` |
 | Demand rule | `price/DemandRule.java`, hooks in `mixin/rules/` + `villagerbargains.rules.mixins.json` |
 | Mod Menu screen / texts | `src/client/java/…/client/`, `src/main/resources/assets/villagerbargains/lang/` |
-| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest` |
+| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedBookLevelGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest` |
 | Supported Minecraft versions | `"minecraft"` in `fabric.mod.json` + the matrix in `.github/workflows/build.yml` |
 | Compile-against versions, mod version | `gradle.properties` |
 
