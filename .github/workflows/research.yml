@@ -15,24 +15,13 @@ jobs:
           distribution: 'temurin'
       - name: Dump APIs
         run: |
-          set -x
-          FAPI=0.161.0+26.3
           M=https://maven.fabricmc.net/net/fabricmc/fabric-api
-          curl -s "$M/fabric-api/$FAPI/fabric-api-$FAPI.pom" | grep -i -A1 'test' | grep -E 'artifactId|version'
-          GTV=$(curl -s "$M/fabric-api/$FAPI/fabric-api-$FAPI.pom" | grep -A1 'fabric-gametest-api-v1</artifactId>' | grep -o '<version>[^<]*' | cut -d'>' -f2)
-          curl -s -o gt.jar "$M/fabric-gametest-api-v1/$GTV/fabric-gametest-api-v1-$GTV.jar"
-          curl -s -o gts.jar "$M/fabric-gametest-api-v1/$GTV/fabric-gametest-api-v1-$GTV-sources.jar" || true
-          unzip -l gt.jar | grep -E 'client.*\.class|\.json' | head -80
-          unzip -p gt.jar fabric.mod.json
-          for c in $(unzip -l gt.jar | grep -o 'net/fabricmc/fabric/api/client/gametest/v1/[A-Za-z/$]*\.class' | sed 's#/#.#g;s#\.class$##'); do javap -cp gt.jar "$c"; done
-          mkdir s && cd s && unzip -q ../gts.jar 2>/dev/null && cd ..
-          find s -path '*api/client/gametest*' -name '*.java' | head -50
-          cat $(find s -path '*client/gametest/v1/FabricClientGameTest.java') 2>/dev/null
-          cat $(find s -path '*client/gametest/v1/context/ClientGameTestContext.java') 2>/dev/null
-          cat $(find s -path '*client/gametest/v1/screenshot/TestScreenshotOptions.java') 2>/dev/null | head -120
-          grep -rn -i -E 'screenshot.*dir|getScreenshot|"screenshots' s --include=*.java | head -20
-          grep -rn -E 'System.getProperty|getenv' s --include=*.java | head -20
-          curl -s -o loom.jar https://maven.fabricmc.net/net/fabricmc/fabric-loom/1.18.2/fabric-loom-1.18.2.jar
-          javap -cp loom.jar 'net.fabricmc.loom.api.fabricapi.GameTestSettings'
-          unzip -l loom.jar | grep -i -E 'ClientGameTest|gametest' | head -20
-          for c in $(unzip -l loom.jar | grep -o 'net/fabricmc/loom/[A-Za-z/]*FabricApiTesting[A-Za-z$]*\.class' | sed 's#/#.#g;s#\.class$##'); do javap -p -c -cp loom.jar "$c" | grep -E 'ldc|String ' | head -80; done
+          V=6.0.7+4be74c3f5d
+          curl -s -o c.jar "$M/fabric-client-gametest-api-v1/$V/fabric-client-gametest-api-v1-$V.jar"
+          curl -s -o cs.jar "$M/fabric-client-gametest-api-v1/$V/fabric-client-gametest-api-v1-$V-sources.jar"
+          unzip -p c.jar fabric.mod.json
+          mkdir s && (cd s && unzip -q ../cs.jar)
+          find s -name '*.java' | sort
+          for f in $(find s -path '*/api/*' -name '*.java' | sort); do echo "=================== $f"; grep -v -E '^\s*(\*|/\*\*|\*/|import |$)' "$f" | grep -v '^ \*'; done
+          echo "=== screenshot dir / CI notes"
+          grep -rn -i -E 'screenshots|getenv|getProperty|xvfb|headless|DISABLE' s/net/fabricmc/fabric/impl | head -40
