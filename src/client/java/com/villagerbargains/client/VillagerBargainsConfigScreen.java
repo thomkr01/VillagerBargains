@@ -60,9 +60,9 @@ public final class VillagerBargainsConfigScreen extends Screen {
      * is named by {@code villagerbargains.<setting>.<mode>} with a {@code .description} tooltip.
      */
     private CycleButton<PricingMode> modeButton(String setting, PricingMode current, Consumer<PricingMode> onChange) {
-        return CycleButton.builder((PricingMode mode) -> modeName(setting, mode), current)
+        return CycleButton.builder((PricingMode mode) -> modeText(setting, mode, ""), current)
                 .withValues(PricingMode.values())
-                .withTooltip(mode -> Tooltip.create(modeDescription(setting, mode)))
+                .withTooltip(mode -> Tooltip.create(modeText(setting, mode, ".description")))
                 .create(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT,
                         Component.translatable("villagerbargains.config." + setting),
                         (button, mode) -> onChange.accept(mode));
@@ -78,15 +78,7 @@ public final class VillagerBargainsConfigScreen extends Screen {
         minecraft.gui.setScreen(parent);
     }
 
-    private static Component modeName(String setting, PricingMode mode) {
-        return Component.translatable("villagerbargains." + setting + "." + key(mode));
-    }
-
-    private static Component modeDescription(String setting, PricingMode mode) {
-        return Component.translatable("villagerbargains." + setting + "." + key(mode) + ".description");
-    }
-
-    private static String key(PricingMode mode) {
-        return mode.name().toLowerCase(Locale.ROOT);
+    private static Component modeText(String setting, PricingMode mode, String suffix) {
+        return Component.translatable("villagerbargains." + setting + "." + mode.name().toLowerCase(Locale.ROOT) + suffix);
     }
 }

@@ -2,9 +2,9 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.EnchantPowerRolls;
-import com.villagerbargains.price.PriceRolls;
-import com.villagerbargains.price.TradeCostScope;
+import com.villagerbargains.price.ThreadScope;
 import net.minecraft.util.RandomSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * }</pre>
  * {@code minecraft:sum} (used by the Trade Rebalance experiment, e.g. {@code 11 + uniform(0, 35)})
  * adds its parts with {@code getFloat}, so both methods are covered.
- * Outside a {@link TradeCostScope} the roll is returned unchanged; an integer roll is then
+ * Outside {@link ThreadScope#TRADE_COST} the roll is returned unchanged; an integer roll is then
  * only recorded in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}).
  */
 @Mixin(targets = "net.minecraft.world.level.storage.loot.providers.number.UniformGenerator")
@@ -34,8 +34,8 @@ public abstract class LegacyUniformGeneratorMixin {
     )
     private int villagerbargains$resolveIntRoll(RandomSource random, int min, int max, Operation<Integer> original) {
         int rolled = original.call(random, min, max);
-        if (TradeCostScope.isActive()) {
-            return PriceRolls.resolve(rolled, min, max);
+        if (ThreadScope.TRADE_COST.isActive()) {
+            return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
         }
         EnchantPowerRolls.record(rolled, min, max); // Enchanted gear price; the roll itself stays vanilla.
         return rolled;
@@ -47,6 +47,6 @@ public abstract class LegacyUniformGeneratorMixin {
     )
     private float villagerbargains$resolveFloatRoll(RandomSource random, float min, float max, Operation<Float> original) {
         float rolled = original.call(random, min, max);
-        return TradeCostScope.isActive() ? PriceRolls.resolve(rolled, min, max) : rolled;
+        return ThreadScope.TRADE_COST.isActive() ? VillagerBargainsConfig.pricingMode().pick(rolled, min, max) : rolled;
     }
 }

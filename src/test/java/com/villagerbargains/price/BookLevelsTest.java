@@ -17,23 +17,23 @@ class BookLevelsTest {
 
     @Test
     void insideRunTheLevelIsPinned() {
-        assertEquals(1, (int) BookLevels.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.MINIMUM)));
-        assertEquals(3, (int) BookLevels.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.NORMAL)));
-        assertEquals(5, (int) BookLevels.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.MAXIMUM)));
+        assertEquals(1, (int) ThreadScope.TRADE_BOOK.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.MINIMUM)));
+        assertEquals(3, (int) ThreadScope.TRADE_BOOK.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.NORMAL)));
+        assertEquals(5, (int) ThreadScope.TRADE_BOOK.run(() -> BookLevels.resolve(3, 1, 5, PricingMode.MAXIMUM)));
     }
 
     @Test
     void singleLevelEnchantmentsKeepTheirLevel() {
         // Mending, Silk Touch, ...: lowest == highest == 1.
         for (PricingMode mode : PricingMode.values()) {
-            assertEquals(1, (int) BookLevels.run(() -> BookLevels.resolve(1, 1, 1, mode)));
+            assertEquals(1, (int) ThreadScope.TRADE_BOOK.run(() -> BookLevels.resolve(1, 1, 1, mode)));
         }
     }
 
     @Test
     void nestedRunsStayPinnedUntilTheOutermostEnds() {
-        int afterNested = BookLevels.run(() -> {
-            int inner = BookLevels.run(() -> BookLevels.resolve(2, 1, 4, PricingMode.MAXIMUM));
+        int afterNested = ThreadScope.TRADE_BOOK.run(() -> {
+            int inner = ThreadScope.TRADE_BOOK.run(() -> BookLevels.resolve(2, 1, 4, PricingMode.MAXIMUM));
             assertEquals(4, inner);
             return BookLevels.resolve(2, 1, 4, PricingMode.MAXIMUM);
         });
@@ -43,7 +43,7 @@ class BookLevelsTest {
 
     @Test
     void scopeClosesWhenTheActionThrows() {
-        assertThrows(IllegalStateException.class, () -> BookLevels.run(() -> {
+        assertThrows(IllegalStateException.class, () -> ThreadScope.TRADE_BOOK.run(() -> {
             throw new IllegalStateException("boom");
         }));
         assertEquals(2, BookLevels.resolve(2, 1, 4, PricingMode.MINIMUM));

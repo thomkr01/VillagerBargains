@@ -2,14 +2,13 @@ package com.villagerbargains.price;
 
 import org.junit.jupiter.api.Test;
 
+import static com.villagerbargains.config.PricingMode.MAXIMUM;
+import static com.villagerbargains.config.PricingMode.MINIMUM;
+import static com.villagerbargains.config.PricingMode.NORMAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EnchantPowerRollsTest {
-    private static final EnchantPowerRolls.Resolver MINIMUM = (rolled, lowest, highest) -> lowest;
-    private static final EnchantPowerRolls.Resolver NORMAL = (rolled, lowest, highest) -> rolled;
-    private static final EnchantPowerRolls.Resolver MAXIMUM = (rolled, lowest, highest) -> highest;
-
     @Test
     void gearCostIsPinnedToTheRangeOfTheLevelsRoll() {
         // levels = uniform(5, 19) rolled 12: vanilla adds 12 to the price.

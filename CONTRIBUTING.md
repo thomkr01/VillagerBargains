@@ -17,7 +17,7 @@ feature/* ← individual features / fixes, branched from develop
 ## Design rules
 
 * **Only touch the price roll.** Every hook must let vanilla draw its random number first
-  (`original.call(...)`) and only then replace the result via `PriceRolls`. Skipping the
+  (`original.call(...)`) and only then replace the result via `PricingMode#pick`. Skipping the
   call would shift the random sequence and change other outcomes. The one documented
   exception is the level roll of traded enchanted books (`bookLevels`, via `BookLevels`),
   which follows the same rule: roll first, then replace, and only inside a trade.
