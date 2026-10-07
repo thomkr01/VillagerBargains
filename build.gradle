@@ -23,13 +23,14 @@ loom {
     }
 }
 
-// In-game tests (src/gametest). Part of `build`; run alone with `./gradlew runGameTest`.
+// In-game tests (src/gametest). Server tests are part of `build` (run alone with `./gradlew runGameTest`);
+// the client test needs a display and runs in its own CI job (`./gradlew runClientGameTest`).
 fabricApi {
     configureTests {
         createSourceSet = true
         modId = 'villagerbargains-gametest'
         enableGameTests = true
-        enableClientGameTests = false
+        enableClientGameTests = true
         eula = true
     }
 }

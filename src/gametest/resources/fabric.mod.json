@@ -12,6 +12,9 @@
       "com.villagerbargains.gametest.EnchantedBookPriceGameTest",
       "com.villagerbargains.gametest.EnchantedGearPriceGameTest",
       "com.villagerbargains.gametest.UniformTradeCostGameTest"
+    ],
+    "fabric-client-gametest": [
+      "com.villagerbargains.gametest.ConfigScreenClientGameTest"
     ]
   },
   "depends": {
