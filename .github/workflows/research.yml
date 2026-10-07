@@ -1,0 +1,38 @@
+# TEMPORARY: dumps the Fabric client game test API so the client test can be written
+# without network access to Fabric's maven. Removed before the PR is opened.
+name: Research
+on:
+  push:
+    branches: [ claude/project-thread-2di9m0 ]
+    paths: [ '.github/workflows/research.yml' ]
+jobs:
+  research:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - name: Dump APIs
+        run: |
+          set -x
+          FAPI=0.161.0+26.3
+          M=https://maven.fabricmc.net/net/fabricmc/fabric-api
+          curl -s "$M/fabric-api/$FAPI/fabric-api-$FAPI.pom" | grep -i -A1 'test' | grep -E 'artifactId|version'
+          GTV=$(curl -s "$M/fabric-api/$FAPI/fabric-api-$FAPI.pom" | grep -A1 'fabric-gametest-api-v1</artifactId>' | grep -o '<version>[^<]*' | cut -d'>' -f2)
+          curl -s -o gt.jar "$M/fabric-gametest-api-v1/$GTV/fabric-gametest-api-v1-$GTV.jar"
+          curl -s -o gts.jar "$M/fabric-gametest-api-v1/$GTV/fabric-gametest-api-v1-$GTV-sources.jar" || true
+          unzip -l gt.jar | grep -E 'client.*\.class|\.json' | head -80
+          unzip -p gt.jar fabric.mod.json
+          for c in $(unzip -l gt.jar | grep -o 'net/fabricmc/fabric/api/client/gametest/v1/[A-Za-z/$]*\.class' | sed 's#/#.#g;s#\.class$##'); do javap -cp gt.jar "$c"; done
+          mkdir s && cd s && unzip -q ../gts.jar 2>/dev/null && cd ..
+          find s -path '*api/client/gametest*' -name '*.java' | head -50
+          cat $(find s -path '*client/gametest/v1/FabricClientGameTest.java') 2>/dev/null
+          cat $(find s -path '*client/gametest/v1/context/ClientGameTestContext.java') 2>/dev/null
+          cat $(find s -path '*client/gametest/v1/screenshot/TestScreenshotOptions.java') 2>/dev/null | head -120
+          grep -rn -i -E 'screenshot.*dir|getScreenshot|"screenshots' s --include=*.java | head -20
+          grep -rn -E 'System.getProperty|getenv' s --include=*.java | head -20
+          curl -s -o loom.jar https://maven.fabricmc.net/net/fabricmc/fabric-loom/1.18.2/fabric-loom-1.18.2.jar
+          javap -cp loom.jar 'net.fabricmc.loom.api.fabricapi.GameTestSettings'
+          unzip -l loom.jar | grep -i -E 'ClientGameTest|gametest' | head -20
+          for c in $(unzip -l loom.jar | grep -o 'net/fabricmc/loom/[A-Za-z/]*FabricApiTesting[A-Za-z$]*\.class' | sed 's#/#.#g;s#\.class$##'); do javap -p -c -cp loom.jar "$c" | grep -E 'ldc|String ' | head -80; done
