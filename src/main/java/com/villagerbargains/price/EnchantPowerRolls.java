@@ -1,5 +1,8 @@
 package com.villagerbargains.price;
 
+import com.villagerbargains.config.PricingMode;
+import com.villagerbargains.config.VillagerBargainsConfig;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -18,12 +21,6 @@ import java.util.function.Supplier;
  * <p>A recording is open only while {@link #run} executes; outside of it {@link #record} does nothing.
  */
 public final class EnchantPowerRolls {
-    /** Resolves one integer roll; {@link PriceRolls#resolve(int, int, int)} in the game. */
-    @FunctionalInterface
-    public interface Resolver {
-        int resolve(int rolled, int lowest, int highest);
-    }
-
     private record Roll(int rolled, int lowest, int highest) {}
 
     // A stack, so a nested enchant_with_levels (e.g. from a data pack) keeps its own rolls.
@@ -52,22 +49,22 @@ public final class EnchantPowerRolls {
 
     /** The cost vanilla computed from the recorded rolls, with every roll resolved by the pricing mode. */
     public static int pinnedCost(int vanillaCost) {
-        return pinnedCost(vanillaCost, PriceRolls::resolve);
+        return pinnedCost(vanillaCost, VillagerBargainsConfig.pricingMode());
     }
 
     /**
-     * {@link #pinnedCost(int)} with an explicit resolver. Unchanged when no recording is open.
+     * {@link #pinnedCost(int)} with an explicit mode. Unchanged when no recording is open.
      * Never below 0: vanilla adds no extra cost at all when the rolled power is not positive.
      * Assumes the recorded rolls are summands of the cost, as in every vanilla trade.
      */
-    public static int pinnedCost(int vanillaCost, Resolver resolver) {
+    public static int pinnedCost(int vanillaCost, PricingMode mode) {
         List<Roll> rolls = OPEN.get().peek();
         if (rolls == null) {
             return vanillaCost;
         }
         int cost = vanillaCost;
         for (Roll roll : rolls) {
-            cost += resolver.resolve(roll.rolled(), roll.lowest(), roll.highest()) - roll.rolled();
+            cost += mode.pick(roll.rolled(), roll.lowest(), roll.highest()) - roll.rolled();
         }
         return Math.max(0, cost);
     }

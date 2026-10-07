@@ -3,8 +3,9 @@ package com.villagerbargains.mixin;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.BookLevels;
-import com.villagerbargains.price.PriceRolls;
+import com.villagerbargains.price.ThreadScope;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -38,7 +39,7 @@ public abstract class EnchantRandomlyFunctionMixin {
         if (!context.hasParameter(LootContextParams.ADDITIONAL_COST_COMPONENT_ALLOWED)) {
             return original.call(itemStack, context); // Not a trade (chest loot, mob gear): vanilla level.
         }
-        return BookLevels.run(() -> original.call(itemStack, context));
+        return ThreadScope.TRADE_BOOK.run(() -> original.call(itemStack, context));
     }
 
     @WrapOperation(
@@ -56,6 +57,6 @@ public abstract class EnchantRandomlyFunctionMixin {
     )
     private int villagerbargains$resolveBookPriceRoll(RandomSource random, int bound, Operation<Integer> original) {
         int rolled = original.call(random, bound); // Always roll, so the random sequence stays vanilla.
-        return PriceRolls.resolve(rolled, 0, bound - 1);
+        return VillagerBargainsConfig.pricingMode().pick(rolled, 0, bound - 1);
     }
 }
