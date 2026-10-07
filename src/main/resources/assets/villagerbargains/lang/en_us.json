@@ -1,12 +1,19 @@
 {
   "villagerbargains.config.title": "Villager Bargains",
   "villagerbargains.config.pricing": "Pricing",
-  "villagerbargains.config.note": "Applies to trades a villager unlocks from now on. Trades it already offers keep their price; demand follows the new mode from the villager's next restock.",
+  "villagerbargains.config.bookLevels": "Book levels",
+  "villagerbargains.config.note": "Applies to trades a villager unlocks from now on. Trades it already offers keep their price and book level; demand follows the new pricing mode from the villager's next restock.",
   "villagerbargains.pricing.minimum": "Minimum",
   "villagerbargains.pricing.minimum.description": "Every random price (books and enchanted gear) is the cheapest vanilla can roll, and demand never raises prices.",
   "villagerbargains.pricing.normal": "Normal",
   "villagerbargains.pricing.normal.description": "Vanilla behaviour: random prices and the vanilla demand rule.",
   "villagerbargains.pricing.maximum": "Maximum",
   "villagerbargains.pricing.maximum.description": "Every random price (books and enchanted gear) is the most expensive vanilla can roll, and every trade is priced as if sold out.",
-  "modmenu.descriptionTranslation.villagerbargains": "Pins villager and wandering trader prices to the cheapest (or most expensive) value vanilla can produce: random prices of enchanted books and gear, and the demand surcharge. Enchantments, reputation discounts and Hero of the Village stay vanilla."
+  "villagerbargains.bookLevels.minimum": "Minimum",
+  "villagerbargains.bookLevels.minimum.description": "Traded enchanted books always have the enchantment's lowest level. Chest loot is not affected.",
+  "villagerbargains.bookLevels.normal": "Normal",
+  "villagerbargains.bookLevels.normal.description": "Vanilla behaviour: traded enchanted books get a random level.",
+  "villagerbargains.bookLevels.maximum": "Maximum",
+  "villagerbargains.bookLevels.maximum.description": "Traded enchanted books always have the enchantment's highest level. Chest loot is not affected.",
+  "modmenu.descriptionTranslation.villagerbargains": "Pins villager and wandering trader prices to the cheapest (or most expensive) value vanilla can produce: random prices of enchanted books and gear, and the demand surcharge. Optionally, traded enchanted books always get the lowest or highest level. Which enchantments are offered, reputation discounts and Hero of the Village stay vanilla."
 }

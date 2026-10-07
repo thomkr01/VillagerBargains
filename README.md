@@ -2,11 +2,13 @@
 
 A Fabric mod for **Minecraft 26.2 and 26.3** (one jar for both). It makes every villager and
 wandering trader price land on the **cheapest price vanilla can produce** (or the most
-expensive, or plain vanilla), for every profession, and changes nothing else.
+expensive, or plain vanilla), for every profession. Optionally, it can also make villagers
+always sell enchanted books at the lowest or highest level.
 
-Everything else stays vanilla: which trades a villager offers, which enchantments and levels
-appear, stock, XP, gossip/reputation discounts and Hero of the Village. The mod only removes
-the luck from the price: the random price rolls and the demand surcharge.
+Everything else stays vanilla: which trades a villager offers, which enchantments appear (and
+their levels, unless you turn on book levels), stock, XP, gossip/reputation discounts and Hero
+of the Village. The mod only removes the luck from the price: the random price rolls and the
+demand surcharge.
 
 ## Pricing modes
 
@@ -28,6 +30,43 @@ Bargains → Pricing), or in `config/villagerbargains.json`:
 The mode applies to trades a villager unlocks **after** the change. Offers a villager
 already has are saved in the world and keep their rolled price, just like in vanilla; only
 their demand part follows the new mode, from the villager's next restock on.
+
+## Book levels
+
+An optional second setting, `bookLevels`, decides which level the enchanted books sold by
+villagers get. It is `NORMAL` (vanilla) by default, so nothing changes unless you opt in.
+
+```json
+{
+  "pricing": "MINIMUM",
+  "bookLevels": "MAXIMUM"
+}
+```
+
+| Mode | Level of a traded enchanted book |
+|------|----------------------------------|
+| `MINIMUM` | Always the enchantment's lowest level (usually I). |
+| `NORMAL` *(default)* | Vanilla: a random level. |
+| `MAXIMUM` | Always the enchantment's highest level (Sharpness V, Efficiency V, Unbreaking III; Mending stays I). |
+
+In game: Mod Menu → Villager Bargains → Book levels.
+
+* Which enchantment a book gets stays vanilla; only its level is replaced. Vanilla still
+  draws the level roll, so the random sequence is unchanged.
+* Only trades are affected. Books from chests, fishing and other loot keep vanilla levels.
+* Enchanted tools, weapons and armor are **not** affected.
+* Like `pricing`, it applies to trades a villager unlocks after the change.
+
+The book's price is computed by vanilla from the level that is sold, and `pricing` still pins
+the price roll on its own (`2 + random(0 … 4 + 10L) + 3L`, doubled for treasure, at most 64):
+
+| Book offered | `bookLevels` | `pricing: MINIMUM` | `pricing: NORMAL` | `pricing: MAXIMUM` |
+|--------------|--------------|--------------------|-------------------|--------------------|
+| Sharpness | `MINIMUM` → Sharpness I | 5 | 5 … 19 | 19 |
+| Sharpness | `NORMAL` → Sharpness I … V | 5 … 17 | 5 … 64 | 19 … 64 |
+| Sharpness | `MAXIMUM` → Sharpness V | 17 | 17 … 64 | 64 |
+| Unbreaking | `MAXIMUM` → Unbreaking III | 11 | 11 … 45 | 45 |
+| Mending (treasure) | any → Mending I | 10 | 10 … 38 | 38 |
 
 ## Which prices are random in vanilla?
 
@@ -120,12 +159,18 @@ but the final price is still the lowest.
 * **Reputation/gossip discounts and Hero of the Village** (see above).
 * **Fixed prices.** Trades without a random roll (most of them, including exploration maps)
   cost the same base price in every mode; only demand differs.
+* **Enchantments.** Which enchantment a book or a piece of gear gets is always vanilla. Book
+  levels are vanilla too unless you set `bookLevels`; gear enchantments are never changed.
 
 ### Why nothing else changes
 
 Vanilla still draws its random number; the mod only replaces the result. The random
 sequence is consumed exactly as in vanilla, so every later roll (other trades, enchantments,
 levels) comes out the same as it would have without the mod.
+
+The book level roll is the one exception to "only the price": with `bookLevels` set to
+`MINIMUM` or `MAXIMUM` the level of a traded book is replaced too. It works the same way:
+vanilla rolls the level, the mod replaces the result, and the random sequence stays vanilla.
 
 ## Installation
 
@@ -172,9 +217,10 @@ src/main/java/com/villagerbargains/
 ├── price/EnchantPowerRolls.java   enchanted gear: vanilla power for the item, pinned value for the price
 ├── price/DemandRule.java          how each mode pins a trade's demand
 ├── price/DemandPinnable.java      lets VillagerTradeMixin pin a new offer's demand
+├── price/BookLevels.java          traded enchanted books: vanilla level roll → configured level
 └── mixin/
     ├── VillagerBargainsMixinPlugin    skips hooks whose vanilla class is not in this version
-    ├── EnchantRandomlyFunctionMixin   enchanted book price roll
+    ├── EnchantRandomlyFunctionMixin   enchanted book price roll and level roll
     ├── EnchantWithLevelsFunctionMixin enchanted gear price (power roll)
     ├── TradeCostMixin                 opens TradeCostScope around trade-cost evaluation
     ├── provider/                      uniform number provider hooks (26.2 and 26.3 variants)
@@ -185,9 +231,10 @@ src/main/resources/
 ├── villagerbargains.mixins.json        price-roll mixins
 └── villagerbargains.rules.mixins.json  demand-rule mixins
 src/client/java/…/client/          Mod Menu screen
-src/test/java/                     unit tests (pricing maths)
+src/test/java/                     unit tests (pricing maths, book levels, config file)
 src/gametest/java/…/gametest/      in-game tests: real trade offers in every mode
 ├── EnchantedBookPriceGameTest     librarian books
+├── EnchantedBookLevelGameTest     librarian book levels in every bookLevels mode
 ├── EnchantedGearPriceGameTest     enchanted tools, weapons and armor
 ├── DemandRuleGameTest             demand on new offers and restocks
 ├── AllTradesSweepGameTest         every trade of every profession + wandering trader
@@ -198,11 +245,16 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
 
 `./gradlew build` runs, for every Minecraft version:
 
-* **Unit tests:** the pricing maths, including the vanilla book formula.
+* **Unit tests:** the pricing maths, including the vanilla book formula; the book level
+  resolver (`BookLevelsTest`); reading and writing the config, including `bookLevels`
+  (`VillagerBargainsConfigTest`).
 * **Game tests** on a real game server, with fixed seeds:
   * **Books:** hundreds of librarian book offers; `MINIMUM`/`MAXIMUM` always give the vanilla
     extreme, `NORMAL` still varies, and the enchantment, its level and the random numbers
     drawn afterwards are identical in every mode.
+  * **Book levels:** with `bookLevels` `MINIMUM`/`MAXIMUM` every traded book has the lowest or
+    highest level, `NORMAL` still varies, the enchantment and the random sequence stay vanilla,
+    the price matches the level sold, and enchanted books in chest loot keep vanilla levels.
   * **Enchanted gear:** the price is `base + 5` / `base + 19`, while the enchantments match vanilla.
   * **Demand rule:** new offers and restocks (including sell-outs) in every mode, checked
     against the vanilla formula.
