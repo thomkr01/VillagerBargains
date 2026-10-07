@@ -3,10 +3,12 @@
 # server for every supported Minecraft version: a plain boot plus the full game tests.
 name: Build
 
+# Runs once per pull request change (not again for the branch push or the merge); the
+# Release workflow builds and tests main itself. Use "Run workflow" for a manual run.
 on:
-  push:
-    paths-ignore: [ '**.md' ]
   pull_request:
+    paths-ignore: [ '**.md' ]
+  workflow_dispatch:
 
 concurrency:
   group: build-${{ github.ref }}
