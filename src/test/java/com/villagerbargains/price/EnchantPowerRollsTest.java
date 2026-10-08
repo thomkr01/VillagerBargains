@@ -74,4 +74,26 @@ class EnchantPowerRollsTest {
         }));
         assertEquals(12, EnchantPowerRolls.pinnedCost(12, MAXIMUM));
     }
+
+    @Test
+    void gearStrengthPinsThePowerAndThePriceFollowsPricing() {
+        // levels = uniform(5, 19) rolled 12, gear strength MAXIMUM: the item is enchanted with power 19.
+        int[] result = EnchantPowerRolls.run(() -> {
+            int power = EnchantPowerRolls.record(12, 5, 19, MAXIMUM);
+            return new int[] {
+                    power,
+                    EnchantPowerRolls.pinnedCost(power, MINIMUM),
+                    EnchantPowerRolls.pinnedCost(power, NORMAL)};
+        });
+        assertEquals(19, result[0]);
+        assertEquals(5, result[1]);
+        assertEquals(19, result[2]);
+        assertEquals(5, EnchantPowerRolls.run(() -> EnchantPowerRolls.record(12, 5, 19, MINIMUM)));
+        assertEquals(12, EnchantPowerRolls.run(() -> EnchantPowerRolls.record(12, 5, 19, NORMAL)));
+    }
+
+    @Test
+    void gearStrengthLeavesRollsOutsideARecordingAlone() {
+        assertEquals(12, EnchantPowerRolls.record(12, 5, 19, MAXIMUM));
+    }
 }

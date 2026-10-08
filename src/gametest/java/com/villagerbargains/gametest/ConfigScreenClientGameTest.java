@@ -26,15 +26,17 @@ import java.util.Locale;
  * to the client's {@code screenshots} folder, which CI uploads.
  */
 public final class ConfigScreenClientGameTest implements FabricClientGameTest {
-    private static final String[] SETTINGS = {"pricing", "bookLevels"};
+    private static final String[] SETTINGS = {"pricing", "bookLevels", "gearStrength"};
 
     @Override
     public void runTest(ClientGameTestContext context) {
         PricingMode previousPricing = VillagerBargainsConfig.pricingMode();
         PricingMode previousBookLevels = VillagerBargainsConfig.bookLevelMode();
+        PricingMode previousGearStrength = VillagerBargainsConfig.gearStrengthMode();
         try {
             VillagerBargainsConfig.setPricingMode(PricingMode.MINIMUM);
             VillagerBargainsConfig.setBookLevelMode(PricingMode.NORMAL);
+            VillagerBargainsConfig.setGearStrengthMode(PricingMode.NORMAL);
 
             assertTranslated();
 
@@ -56,6 +58,11 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
             context.waitTick();
             assertModes(PricingMode.MAXIMUM, PricingMode.MINIMUM);
 
+            context.clickScreenButton("villagerbargains.config.gearStrength");
+            context.waitTick();
+            check(VillagerBargainsConfig.gearStrengthMode() == PricingMode.MAXIMUM,
+                    "Gear strength should be MAXIMUM, is " + VillagerBargainsConfig.gearStrengthMode());
+
             assertButtonsShow(context, screen, "Maximum", "Minimum");
             context.takeScreenshot("villagerbargains-config-changed");
             assertSavedFile(PricingMode.MAXIMUM, PricingMode.MINIMUM);
@@ -69,6 +76,7 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         } finally {
             VillagerBargainsConfig.setPricingMode(previousPricing);
             VillagerBargainsConfig.setBookLevelMode(previousBookLevels);
+            VillagerBargainsConfig.setGearStrengthMode(previousGearStrength);
         }
     }
 
@@ -98,7 +106,7 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         }
     }
 
-    /** The two buttons are on screen, labelled with their setting and current value. */
+    /** The buttons are on screen, labelled with their setting and current value. */
     private static void assertButtonsShow(ClientGameTestContext context, Screen screen, String pricing, String bookLevels) {
         List<String> labels = context.computeOnClient(client -> {
             List<String> found = new ArrayList<>();
@@ -111,6 +119,7 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         });
         check(labels.contains("Pricing: " + pricing), "Expected button 'Pricing: " + pricing + "', got " + labels);
         check(labels.contains("Book levels: " + bookLevels), "Expected button 'Book levels: " + bookLevels + "', got " + labels);
+        check(labels.stream().anyMatch(label -> label.startsWith("Gear strength: ")), "Expected a 'Gear strength' button, got " + labels);
         for (String label : labels) {
             check(!label.contains("villagerbargains."), "Untranslated text on screen: " + label);
         }
@@ -134,6 +143,7 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         }
         check(json.contains("\"pricing\": \"" + pricing.name() + "\""), "Config file has wrong pricing: " + json);
         check(json.contains("\"bookLevels\": \"" + bookLevels.name() + "\""), "Config file has wrong book levels: " + json);
+        check(json.contains("\"gearStrength\": \"MAXIMUM\""), "Config file has wrong gear strength: " + json);
     }
 
     private static void check(boolean condition, String message) {

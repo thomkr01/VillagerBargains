@@ -54,7 +54,7 @@ In game: Mod Menu → Villager Bargains → Book levels.
 * Which enchantment a book gets stays vanilla; only its level is replaced. Vanilla still
   draws the level roll, so the random sequence is unchanged.
 * Only trades are affected. Books from chests, fishing and other loot keep vanilla levels.
-* Enchanted tools, weapons and armor are **not** affected.
+* Enchanted tools, weapons and armor are **not** affected (see [Gear strength](#gear-strength)).
 * Like `pricing`, it applies to trades a villager unlocks after the change.
 
 The book's price is computed by vanilla from the level that is sold, and `pricing` still pins
@@ -67,6 +67,37 @@ the price roll on its own (`2 + random(0 … 4 + 10L) + 3L`, doubled for treasur
 | Sharpness | `MAXIMUM` → Sharpness V | 17 | 17 … 64 | 64 |
 | Unbreaking | `MAXIMUM` → Unbreaking III | 11 | 11 … 45 | 45 |
 | Mending (treasure) | any → Mending I | 10 | 10 … 38 | 38 |
+
+## Gear strength
+
+An optional third setting, `gearStrength`, decides how strongly the enchanted tools, weapons
+and armor sold by villagers are enchanted. It is `NORMAL` (vanilla) by default.
+
+```json
+{
+  "pricing": "MINIMUM",
+  "bookLevels": "NORMAL",
+  "gearStrength": "MAXIMUM"
+}
+```
+
+| Mode | Enchanting power of traded gear |
+|------|---------------------------------|
+| `MINIMUM` | Always the weakest power vanilla can roll (5). |
+| `NORMAL` *(default)* | Vanilla: a random power from 5 to 19. |
+| `MAXIMUM` | Always the strongest power vanilla can roll (19), as if enchanted at level 19. |
+
+In game: Mod Menu → Villager Bargains → Gear strength.
+
+* Power 19 gives the best enchantments a villager can sell, but which enchantments it rolls is
+  still vanilla's choice, so it is not always the same set.
+* The price still follows `pricing`: with `MINIMUM` pricing and `MAXIMUM` strength, a diamond
+  sword enchanted at power 19 costs 13 emeralds, the cheapest vanilla price for that trade.
+* Only trades are affected. Gear from chests, mobs and the enchanting table stays vanilla.
+* With `MINIMUM` or `MAXIMUM`, the item can differ from the one vanilla would have made with
+  the same seed. Vanilla still draws the power roll first, but enchanting with a different
+  power uses the random numbers that follow differently.
+* Like the other settings, it applies to trades a villager unlocks after the change.
 
 ## Which prices are random in vanilla?
 
@@ -160,7 +191,8 @@ but the final price is still the lowest.
 * **Fixed prices.** Trades without a random roll (most of them, including exploration maps)
   cost the same base price in every mode; only demand differs.
 * **Enchantments.** Which enchantment a book or a piece of gear gets is always vanilla. Book
-  levels are vanilla too unless you set `bookLevels`; gear enchantments are never changed.
+  levels are vanilla too unless you set `bookLevels`, and gear enchanting power unless you set
+  `gearStrength`.
 
 ### Why nothing else changes
 
@@ -168,9 +200,11 @@ Vanilla still draws its random number; the mod only replaces the result. The ran
 sequence is consumed exactly as in vanilla, so every later roll (other trades, enchantments,
 levels) comes out the same as it would have without the mod.
 
-The book level roll is the one exception to "only the price": with `bookLevels` set to
+The book level roll is an exception to "only the price": with `bookLevels` set to
 `MINIMUM` or `MAXIMUM` the level of a traded book is replaced too. It works the same way:
 vanilla rolls the level, the mod replaces the result, and the random sequence stays vanilla.
+`gearStrength` works the same way for the enchanting power of traded gear, with the
+difference noted under [Gear strength](#gear-strength).
 
 ## Installation
 

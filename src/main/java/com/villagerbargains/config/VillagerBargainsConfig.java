@@ -20,7 +20,8 @@ import java.nio.file.Path;
  * <pre>{@code
  * {
  *   "pricing": "MINIMUM",     // MINIMUM, NORMAL or MAXIMUM
- *   "bookLevels": "NORMAL"    // MINIMUM, NORMAL or MAXIMUM
+ *   "bookLevels": "NORMAL",   // MINIMUM, NORMAL or MAXIMUM
+ *   "gearStrength": "NORMAL"  // MINIMUM, NORMAL or MAXIMUM
  * }
  * }</pre>
  *
@@ -33,13 +34,17 @@ public final class VillagerBargainsConfig {
     /** Key used by 1.x releases; read once so existing configs keep their choice. */
     private static final String LEGACY_KEY_PRICING = "globalPriceMode";
     private static final String KEY_BOOK_LEVELS = "bookLevels";
+    private static final String KEY_GEAR_STRENGTH = "gearStrength";
     private static final PricingMode DEFAULT_MODE = PricingMode.MINIMUM;
     /** Vanilla by default: changing which book levels villagers sell is opt-in. */
     private static final PricingMode DEFAULT_BOOK_LEVEL_MODE = PricingMode.NORMAL;
+    /** Vanilla by default, like book levels. */
+    private static final PricingMode DEFAULT_GEAR_STRENGTH_MODE = PricingMode.NORMAL;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static volatile PricingMode pricingMode = DEFAULT_MODE;
     private static volatile PricingMode bookLevelMode = DEFAULT_BOOK_LEVEL_MODE;
+    private static volatile PricingMode gearStrengthMode = DEFAULT_GEAR_STRENGTH_MODE;
 
     private VillagerBargainsConfig() {}
 
@@ -65,6 +70,17 @@ public final class VillagerBargainsConfig {
         save();
     }
 
+    /** Which enchanting power traded enchanted gear gets: the lowest, the vanilla roll or the highest. */
+    public static PricingMode gearStrengthMode() {
+        return gearStrengthMode;
+    }
+
+    /** Changes the gear strength mode and writes it to disk. */
+    public static void setGearStrengthMode(PricingMode mode) {
+        gearStrengthMode = mode;
+        save();
+    }
+
     /** Loads the config file, creating it with defaults when missing or unreadable. */
     public static void load() {
         Path path = path();
@@ -74,10 +90,12 @@ public final class VillagerBargainsConfig {
                 String pricingKey = json != null && json.has(KEY_PRICING) ? KEY_PRICING : LEGACY_KEY_PRICING;
                 pricingMode = parseMode(json, pricingKey, DEFAULT_MODE);
                 bookLevelMode = parseMode(json, KEY_BOOK_LEVELS, DEFAULT_BOOK_LEVEL_MODE);
+                gearStrengthMode = parseMode(json, KEY_GEAR_STRENGTH, DEFAULT_GEAR_STRENGTH_MODE);
             } catch (IOException | JsonParseException | IllegalStateException e) {
                 VillagerBargains.LOGGER.warn("Could not read {}, using defaults: {}", path, e.getMessage());
                 pricingMode = DEFAULT_MODE;
                 bookLevelMode = DEFAULT_BOOK_LEVEL_MODE;
+                gearStrengthMode = DEFAULT_GEAR_STRENGTH_MODE;
             }
         }
         save(); // Normalises the file (adds missing keys, drops legacy ones).
@@ -106,6 +124,7 @@ public final class VillagerBargainsConfig {
         JsonObject json = new JsonObject();
         json.addProperty(KEY_PRICING, pricingMode.name());
         json.addProperty(KEY_BOOK_LEVELS, bookLevelMode.name());
+        json.addProperty(KEY_GEAR_STRENGTH, gearStrengthMode.name());
         Path path = path();
         try {
             Files.createDirectories(path.getParent());
