@@ -60,7 +60,10 @@ jobs:
             Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
             Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu is optional.
 
-            **What's new in 2.1**
+            **What's new in 2.2**
+            * New optional `gearStrength` setting (MINIMUM / NORMAL default / MAXIMUM) pins the enchanting power of tools, weapons and armor sold by villagers to the weakest (5) or strongest (19) value vanilla can roll. In Mod Menu → Villager Bargains → Gear strength, or `config/villagerbargains.json`. The price still follows `pricing`. Loot gear is unchanged.
+
+            **From 2.1**
             * New optional `bookLevels` setting (MINIMUM / NORMAL default / MAXIMUM) pins the level of enchanted books sold by villagers, e.g. always Sharpness V. In Mod Menu → Villager Bargains → Book levels, or `config/villagerbargains.json`. Loot books and gear are unchanged.
             * Mod info now lists Thomas as author and links the project homepage.
             * Internal cleanup, a real game client test of the settings screen on CI, and a fix for the Java 25 `sun.misc.Unsafe` warning in CI server runs.
