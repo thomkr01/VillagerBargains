@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * {@code minecraft:sum} (used by the Trade Rebalance experiment, e.g. {@code 11 + uniform(0, 35)})
  * adds its parts with {@code getFloat}, so both methods are covered.
  * Outside {@link ThreadScope#TRADE_COST} the roll is returned unchanged; an integer roll is then
- * only recorded in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}).
+ * only recorded (and, with {@code gearStrength} set, pinned) in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}).
  */
 @Mixin(targets = "net.minecraft.world.level.storage.loot.providers.number.UniformGenerator")
 public abstract class LegacyUniformGeneratorMixin {
@@ -37,8 +37,7 @@ public abstract class LegacyUniformGeneratorMixin {
         if (ThreadScope.TRADE_COST.isActive()) {
             return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
         }
-        EnchantPowerRolls.record(rolled, min, max); // Enchanted gear price; the roll itself stays vanilla.
-        return rolled;
+        return EnchantPowerRolls.record(rolled, min, max); // Enchanted gear power: vanilla unless gearStrength is set.
     }
 
     @WrapOperation(

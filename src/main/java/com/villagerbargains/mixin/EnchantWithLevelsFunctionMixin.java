@@ -28,7 +28,8 @@ import org.spongepowered.asm.mixin.injection.At;
  * {@code enchantmentCost} is both the enchanting power and the extra price. Its roll stays vanilla
  * (the {@code mixin/provider} mixins only record it in {@link EnchantPowerRolls}), so the
  * enchantments and the random sequence do not change; only the value written to
- * {@code ADDITIONAL_TRADE_COST} is pinned.
+ * {@code ADDITIONAL_TRADE_COST} is pinned. With the opt-in {@code gearStrength} setting the power
+ * itself is pinned too (after vanilla drew it), and the price is still pinned from that power's range.
  */
 @Mixin(EnchantWithLevelsFunction.class)
 public abstract class EnchantWithLevelsFunctionMixin {

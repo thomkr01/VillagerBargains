@@ -17,6 +17,8 @@ import java.util.function.Supplier;
  * charge {@code base + levels}, where {@code levels} (e.g. {@code uniform(5, 19)}) is also the
  * enchanting power. The rolls themselves are left untouched so the item enchants exactly like
  * vanilla; only the extra cost is moved to what the cheapest / most expensive roll would have cost.
+ * The one exception is the opt-in {@code gearStrength} setting, which replaces the power roll
+ * itself (after vanilla drew it) with the lowest or highest value of its range.
  *
  * <p>A recording is open only while {@link #run} executes; outside of it {@link #record} does nothing.
  */
@@ -39,12 +41,23 @@ public final class EnchantPowerRolls {
         }
     }
 
-    /** Records an integer roll between {@code lowest} and {@code highest} (inclusive), if a recording is open. */
-    public static void record(int rolled, int lowest, int highest) {
+    /**
+     * Inside a recording: resolves an integer power roll between {@code lowest} and {@code highest}
+     * (inclusive) by the gear strength mode, records it and returns it. Outside: returns {@code rolled}.
+     */
+    public static int record(int rolled, int lowest, int highest) {
+        return record(rolled, lowest, highest, VillagerBargainsConfig.gearStrengthMode());
+    }
+
+    /** {@link #record(int, int, int)} with an explicit gear strength mode. */
+    public static int record(int rolled, int lowest, int highest, PricingMode strength) {
         List<Roll> rolls = OPEN.get().peek();
-        if (rolls != null) {
-            rolls.add(new Roll(rolled, lowest, highest));
+        if (rolls == null) {
+            return rolled; // Not a gear trade (chest loot, mob gear, other number providers): vanilla.
         }
+        int power = strength.pick(rolled, lowest, highest);
+        rolls.add(new Roll(power, lowest, highest)); // Vanilla prices the power it enchants with, so record that.
+        return power;
     }
 
     /** The cost vanilla computed from the recorded rolls, with every roll resolved by the pricing mode. */

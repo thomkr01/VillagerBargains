@@ -94,4 +94,15 @@ final class TradeTestSupport {
             VillagerBargainsConfig.setBookLevelMode(previous);
         }
     }
+
+    /** Runs {@code action} with gear strength mode {@code mode} active, then restores the previous one. */
+    static <T> T withGearStrengthMode(PricingMode mode, Supplier<T> action) {
+        PricingMode previous = VillagerBargainsConfig.gearStrengthMode();
+        VillagerBargainsConfig.setGearStrengthMode(mode);
+        try {
+            return action.get();
+        } finally {
+            VillagerBargainsConfig.setGearStrengthMode(previous);
+        }
+    }
 }
