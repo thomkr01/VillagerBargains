@@ -16,8 +16,8 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
- * Config screen opened from Mod Menu: two buttons that cycle MINIMUM → NORMAL → MAXIMUM, one for
- * the pricing mode and one for the level of traded enchanted books.
+ * Config screen opened from Mod Menu: three buttons that cycle MINIMUM → NORMAL → MAXIMUM, for
+ * the pricing mode, the level of traded enchanted books and the strength of traded enchanted gear.
  *
  * <p>Each choice is saved as soon as it changes. It applies to trades generated from then on;
  * offers a villager already has are stored in the world and keep their price and level.
@@ -45,6 +45,8 @@ public final class VillagerBargainsConfigScreen extends Screen {
                 VillagerBargainsConfig::setPricingMode));
         contents.addChild(modeButton("bookLevels", VillagerBargainsConfig.bookLevelMode(),
                 VillagerBargainsConfig::setBookLevelMode));
+        contents.addChild(modeButton("gearStrength", VillagerBargainsConfig.gearStrengthMode(),
+                VillagerBargainsConfig::setGearStrengthMode));
         contents.addChild(new MultiLineTextWidget(Component.translatable("villagerbargains.config.note"), font)
                 .setMaxWidth(CONTENT_WIDTH)
                 .setCentered(true));

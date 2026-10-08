@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.At;
  * <p>Vanilla: {@code getIntUnsafe -> Mth.nextInt(random, min, max)} (both inclusive).
  * The Trade Rebalance experiment prices books as {@code add(11, uniform(0, 35))}, which
  * resolves through this method. Outside {@link ThreadScope#TRADE_COST} the roll is unchanged and only
- * recorded in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}, e.g.
+ * recorded (and, with {@code gearStrength} set, pinned) in {@link EnchantPowerRolls} (the {@code levels} of {@code enchant_with_levels}, e.g.
  * {@code uniform(5, 19)} for enchanted gear trades).
  */
 @Mixin(UniformGenerator.class)
@@ -33,7 +33,6 @@ public abstract class UniformIntProviderMixin {
         if (ThreadScope.TRADE_COST.isActive()) {
             return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
         }
-        EnchantPowerRolls.record(rolled, min, max); // Enchanted gear price; the roll itself stays vanilla.
-        return rolled;
+        return EnchantPowerRolls.record(rolled, min, max); // Enchanted gear power: vanilla unless gearStrength is set.
     }
 }

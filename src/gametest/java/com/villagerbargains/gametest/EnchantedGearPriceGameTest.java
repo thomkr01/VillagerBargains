@@ -96,6 +96,29 @@ public final class EnchantedGearPriceGameTest {
         helper.succeed();
     }
 
+    /**
+     * With {@code gearStrength} pinned, the enchanting power is the end of its range: under NORMAL
+     * pricing (price = base + power) every price is that extreme, while MINIMUM pricing still charges
+     * the cheapest price.
+     */
+    @GameTest
+    public void gearStrengthPinsTheEnchantingPower(GameTestHelper helper) {
+        Villager trader = TradeTestSupport.spawnTrader(helper);
+        for (String trade : GEAR_TRADES) {
+            TreeSet<Integer> normalPrices = prices(generate(helper, trader, trade, PricingMode.NORMAL));
+            TreeSet<Integer> strongest = TradeTestSupport.withGearStrengthMode(PricingMode.MAXIMUM,
+                    () -> prices(generate(helper, trader, trade, PricingMode.NORMAL)));
+            TreeSet<Integer> weakest = TradeTestSupport.withGearStrengthMode(PricingMode.MINIMUM,
+                    () -> prices(generate(helper, trader, trade, PricingMode.NORMAL)));
+            TreeSet<Integer> strongestCheapest = TradeTestSupport.withGearStrengthMode(PricingMode.MAXIMUM,
+                    () -> prices(generate(helper, trader, trade, PricingMode.MINIMUM)));
+            helper.assertValueEqual(strongest, Set.of(normalPrices.last()), "strongest NORMAL prices of " + trade);
+            helper.assertValueEqual(weakest, Set.of(normalPrices.first()), "weakest NORMAL prices of " + trade);
+            helper.assertValueEqual(strongestCheapest, Set.of(normalPrices.first()), "strongest MINIMUM prices of " + trade);
+        }
+        helper.succeed();
+    }
+
     /** Every {@code mode} price of a trade is the same and equals NORMAL's extreme for that trade. */
     private static void assertPinned(GameTestHelper helper, PricingMode mode) {
         Villager trader = TradeTestSupport.spawnTrader(helper);
