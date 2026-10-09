@@ -58,9 +58,13 @@ jobs:
           name: Villager Bargains ${{ steps.version.outputs.version }}
           body: |
             Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
-            Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu is optional.
+            Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu and LuckPerms are optional.
 
-            **What's new in 2.2**
+            **What's new in 2.3**
+            * `/bargain` command: change every setting without a restart. `/bargain` shows the settings, `/bargain reload` re-reads `config/villagerbargains.json`, and `/bargain price|books|gear <minimum|normal|maximum>` sets one and saves it.
+            * Permission nodes `villagerbargains.command.reload|price|books|gear` (operator by default). With LuckPerms they can be granted per player or group and show up in its web editor. LuckPerms stays optional.
+
+            **From 2.2**
             * New optional `gearStrength` setting (MINIMUM / NORMAL default / MAXIMUM) pins the enchanting power of tools, weapons and armor sold by villagers to the weakest (5) or strongest (19) value vanilla can roll. In Mod Menu → Villager Bargains → Gear strength, or `config/villagerbargains.json`. The price still follows `pricing`. Loot gear is unchanged.
 
             **From 2.1**
