@@ -19,7 +19,7 @@ demand surcharge.
 | `MAXIMUM` | Every random price is the most expensive value vanilla can roll, and every trade always carries the demand surcharge of a fully sold-out trade. |
 
 Change it in game with [Mod Menu](https://modrinth.com/mod/modmenu) (Mods → Villager
-Bargains → Pricing), or in `config/villagerbargains.json`:
+Bargains → Pricing), with [`/bargain price`](#commands), or in `config/villagerbargains.json`:
 
 ```json
 {
@@ -49,7 +49,7 @@ villagers get. It is `NORMAL` (vanilla) by default, so nothing changes unless yo
 | `NORMAL` *(default)* | Vanilla: a random level. |
 | `MAXIMUM` | Always the enchantment's highest level (Sharpness V, Efficiency V, Unbreaking III; Mending stays I). |
 
-In game: Mod Menu → Villager Bargains → Book levels.
+In game: Mod Menu → Villager Bargains → Book levels, or `/bargain books`.
 
 * Which enchantment a book gets stays vanilla; only its level is replaced. Vanilla still
   draws the level roll, so the random sequence is unchanged.
@@ -87,7 +87,7 @@ and armor sold by villagers are enchanted. It is `NORMAL` (vanilla) by default.
 | `NORMAL` *(default)* | Vanilla: a random power from 5 to 19. |
 | `MAXIMUM` | Always the strongest power vanilla can roll (19), as if enchanted at level 19. |
 
-In game: Mod Menu → Villager Bargains → Gear strength.
+In game: Mod Menu → Villager Bargains → Gear strength, or `/bargain gear`.
 
 * Power 19 gives the best enchantments a villager can sell, but which enchantments it rolls is
   still vanilla's choice, so it is not always the same set.
@@ -98,6 +98,45 @@ In game: Mod Menu → Villager Bargains → Gear strength.
   the same seed. Vanilla still draws the power roll first, but enchanting with a different
   power uses the random numbers that follow differently.
 * Like the other settings, it applies to trades a villager unlocks after the change.
+
+## Commands
+
+`/bargain` changes the settings without restarting the server. Every change is saved to
+`config/villagerbargains.json` immediately. Like a change in Mod Menu, it applies to trades
+villagers unlock from then on: existing offers keep their price and level, and their demand
+follows the new pricing mode from the next restock.
+
+| Command | Permission node | What it does |
+|---------|-----------------|--------------|
+| `/bargain` | any of the nodes below | Shows the current `pricing`, `bookLevels` and `gearStrength`. |
+| `/bargain reload` | `villagerbargains.command.reload` | Re-reads `config/villagerbargains.json` (after editing the file by hand). |
+| `/bargain price` / `/bargain price <minimum\|normal\|maximum>` | `villagerbargains.command.price` | Shows / sets `pricing`. |
+| `/bargain books` / `/bargain books <minimum\|normal\|maximum>` | `villagerbargains.command.books` | Shows / sets `bookLevels`. |
+| `/bargain gear` / `/bargain gear <minimum\|normal\|maximum>` | `villagerbargains.command.gear` | Shows / sets `gearStrength`. |
+
+Arguments tab-complete. Changes are announced to other operators, like vanilla admin
+commands. The commands also work in single player with cheats enabled.
+
+## Permissions (LuckPerms)
+
+Without a permissions mod, every command needs operator (permission level 2, the same as
+`/gamerule`).
+
+With [LuckPerms](https://luckperms.net/) (Fabric) installed, each node can be granted or
+denied per player or group:
+
+```
+/lp group mods permission set villagerbargains.command.price true
+/lp group admin permission set villagerbargains.command.* true
+```
+
+The mod uses the fabric-permissions-api that LuckPerms ships. It is an optional integration,
+so neither Fabric API nor LuckPerms is required.
+
+The nodes show up in the LuckPerms web editor (`/lp editor`) and in `/lp` tab completion once
+a player has joined the server since it started. LuckPerms learns a node the first time it is
+checked, and the server checks every command node when it sends a joining player their
+command list.
 
 ## Which prices are random in vanilla?
 
@@ -212,7 +251,8 @@ difference noted under [Gear strength](#gear-strength).
 2. Download `villagerbargains-<version>.jar` from [Releases](../../releases). The same jar works on 26.2 and 26.3.
 3. Put it in your `mods/` folder.
 
-Fabric API is **not** required. Mod Menu is optional (only needed for the in-game screen).
+Fabric API is **not** required. Mod Menu is optional (only needed for the in-game screen), and
+so is LuckPerms (only needed for [per-player permissions](#permissions-luckperms)).
 On a server, only the server needs the mod; its config decides the prices.
 
 ## Building
@@ -246,6 +286,7 @@ src/main/java/com/villagerbargains/
 ├── VillagerBargains.java          entrypoint, loads the config
 ├── config/PricingMode.java        MINIMUM / NORMAL / MAXIMUM and how each picks a value
 ├── config/VillagerBargainsConfig  reads/writes config/villagerbargains.json
+├── command/BargainCommands.java   /bargain command tree and permission checks
 ├── price/ThreadScope.java         marks "a trade cost / trade book is being made"
 ├── price/EnchantPowerRolls.java   enchanted gear: vanilla power for the item, pinned value for the price
 ├── price/DemandRule.java          how each mode pins a trade's demand
@@ -256,6 +297,7 @@ src/main/java/com/villagerbargains/
     ├── EnchantRandomlyFunctionMixin   enchanted book price roll and level roll
     ├── EnchantWithLevelsFunctionMixin enchanted gear price (power roll)
     ├── TradeCostMixin                 opens ThreadScope.TRADE_COST around trade-cost evaluation
+    ├── CommandsMixin                  registers /bargain (no Fabric API needed)
     ├── provider/                      uniform number provider hooks (26.2 and 26.3 variants)
     └── rules/                         demand rule hooks (villagerbargains.rules.mixins.json)
         ├── MerchantOfferMixin         pins demand on restock; implements DemandPinnable
@@ -271,7 +313,8 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
 ├── EnchantedGearPriceGameTest     enchanted tools, weapons and armor
 ├── DemandRuleGameTest             demand on new offers and restocks
 ├── AllTradesSweepGameTest         every trade of every profession + wandering trader
-└── UniformTradeCostGameTest       uniform trade costs vs. other uniform rolls
+├── UniformTradeCostGameTest       uniform trade costs vs. other uniform rolls
+└── BargainCommandsGameTest        /bargain commands change and reload the config
 ```
 
 ## Testing
@@ -296,6 +339,8 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
     sequence, and `MINIMUM ≤ NORMAL ≤ MAXIMUM` for every price. Exploration-map trades are
     skipped (their price is fixed).
   * **Uniform:** `uniform` rolls outside trade costs (loot tables, etc.) are left alone.
+  * **Commands:** `/bargain` subcommands set every option, `reload` re-reads the file, and
+    the command tree is registered.
 
 CI then takes the built jar and, for **each** supported Minecraft version, boots a real Fabric
 dedicated server with only this mod installed and runs the full game-test suite on that
