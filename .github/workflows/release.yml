@@ -60,7 +60,10 @@ jobs:
             Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
             Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu and LuckPerms are optional.
 
-            **What's new in 2.3**
+            **What's new in 2.3.1**
+            * New game tests prove that players without operator can neither see nor run any `/bargain` command, that `price`, `books` and `gear` are independent settings, and that LuckPerms nodes are granted or denied one by one. No behaviour change from 2.3.0.
+
+            **From 2.3**
             * `/bargain` command: change every setting without a restart. `/bargain` shows the settings, `/bargain reload` re-reads `config/villagerbargains.json`, and `/bargain price|books|gear <minimum|normal|maximum>` sets one and saves it.
             * Permission nodes `villagerbargains.command.reload|price|books|gear` (operator by default). With LuckPerms they can be granted per player or group and show up in its web editor. LuckPerms stays optional.
 
