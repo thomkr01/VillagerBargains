@@ -51,6 +51,9 @@ dependencies {
 
     // Game tests need Fabric API (it brings in fabric-gametest-api-v1).
     gametestImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    // The permissions API LuckPerms ships, so game tests can stand in for LuckPerms. Only in
+    // `./gradlew build`; the CI server runs leave it out and test the plain operator check.
+    gametestImplementation "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
 
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

@@ -339,8 +339,13 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
     sequence, and `MINIMUM ≤ NORMAL ≤ MAXIMUM` for every price. Exploration-map trades are
     skipped (their price is fixed).
   * **Uniform:** `uniform` rolls outside trade costs (loot tables, etc.) are left alone.
-  * **Commands:** `/bargain` subcommands set every option, `reload` re-reads the file, and
-    the command tree is registered.
+  * **Commands:** `/bargain` subcommands set every option, each one only its own (`price`,
+    `books` and `gear` never change each other), and `reload` re-reads the file.
+  * **Permissions:** an operator can use every command; a player without operator can neither
+    see nor run any of them, and no setting changes. In `./gradlew build` the game tests also
+    run with the permissions API LuckPerms uses: each node is granted or denied on its own,
+    and showing `/bargain` checks every node, which is how LuckPerms learns them. The CI
+    server runs leave that API out, so they test the plain operator check.
 
 CI then takes the built jar and, for **each** supported Minecraft version, boots a real Fabric
 dedicated server with only this mod installed and runs the full game-test suite on that
