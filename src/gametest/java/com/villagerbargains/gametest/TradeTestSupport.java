@@ -13,6 +13,7 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Helpers shared by the game tests: seeded trade contexts and temporary pricing / book level modes. */
@@ -73,36 +74,28 @@ final class TradeTestSupport {
         return new LootContext.Builder(params).withOptionalRandomSeed(seed).create(Optional.empty());
     }
 
-    /** Runs {@code action} with {@code mode} active, then restores the previous mode. */
+    /** Runs {@code action} with pricing mode {@code mode} active, then restores the previous one. */
     static <T> T withMode(PricingMode mode, Supplier<T> action) {
-        PricingMode previous = VillagerBargainsConfig.pricingMode();
-        VillagerBargainsConfig.setPricingMode(mode);
-        try {
-            return action.get();
-        } finally {
-            VillagerBargainsConfig.setPricingMode(previous);
-        }
+        return with(VillagerBargainsConfig::pricingMode, VillagerBargainsConfig::setPricingMode, mode, action);
     }
 
     /** Runs {@code action} with book level mode {@code mode} active, then restores the previous one. */
     static <T> T withBookLevelMode(PricingMode mode, Supplier<T> action) {
-        PricingMode previous = VillagerBargainsConfig.bookLevelMode();
-        VillagerBargainsConfig.setBookLevelMode(mode);
-        try {
-            return action.get();
-        } finally {
-            VillagerBargainsConfig.setBookLevelMode(previous);
-        }
+        return with(VillagerBargainsConfig::bookLevelMode, VillagerBargainsConfig::setBookLevelMode, mode, action);
     }
 
     /** Runs {@code action} with gear strength mode {@code mode} active, then restores the previous one. */
     static <T> T withGearStrengthMode(PricingMode mode, Supplier<T> action) {
-        PricingMode previous = VillagerBargainsConfig.gearStrengthMode();
-        VillagerBargainsConfig.setGearStrengthMode(mode);
+        return with(VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode, mode, action);
+    }
+
+    private static <T> T with(Supplier<PricingMode> get, Consumer<PricingMode> set, PricingMode mode, Supplier<T> action) {
+        PricingMode previous = get.get();
+        set.accept(mode);
         try {
             return action.get();
         } finally {
-            VillagerBargainsConfig.setGearStrengthMode(previous);
+            set.accept(previous);
         }
     }
 }
