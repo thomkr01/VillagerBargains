@@ -33,6 +33,8 @@ feature/* ← individual features / fixes, branched from develop
   variant. Target classes missing from the version you compile against are named as strings
   (`@Mixin(targets = "…")`); `VillagerBargainsMixinPlugin` skips a mixin whose target is absent.
   Code shared by all versions must only use vanilla API that exists in all of them.
+* **Every setting has a command.** A new config option gets a `/bargain` subcommand with its
+  own `villagerbargains.command.<name>` node (default operator), and the README tables list it.
 * One responsibility per class, a short Javadoc on every class, and each mixin documents the
   vanilla line it hooks.
 
@@ -47,7 +49,8 @@ feature/* ← individual features / fixes, branched from develop
 | Gear power roll (non-price roll) | `price/EnchantPowerRolls.java`, hooks in `mixin/provider/` |
 | Demand rule | `price/DemandRule.java`, hooks in `mixin/rules/` + `villagerbargains.rules.mixins.json` |
 | Mod Menu screen / texts | `src/client/java/…/client/`, `src/main/resources/assets/villagerbargains/lang/` |
-| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedBookLevelGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest` |
+| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedBookLevelGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest`, `BargainCommandsGameTest` |
+| Commands / permission nodes | `src/main/java/com/villagerbargains/command/BargainCommands.java`, hook in `mixin/CommandsMixin.java` |
 | Supported Minecraft versions | `"minecraft"` in `fabric.mod.json` + the matrix in `.github/workflows/build.yml` |
 | Compile-against versions, mod version | `gradle.properties` |
 
