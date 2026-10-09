@@ -39,8 +39,6 @@ public final class VillagerBargainsMixinPlugin implements IMixinConfigPlugin {
         return VillagerBargainsMixinPlugin.class.getClassLoader().getResource(resource) != null;
     }
 
-    // Unused parts of IMixinConfigPlugin.
-
     @Override
     public void onLoad(String mixinPackage) {}
 
