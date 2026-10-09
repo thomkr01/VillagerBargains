@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
  *
  * <p>Vanilla trades use fixed counts, but data packs (including the vanilla
  * "Trade Rebalance" experiment) may use random number providers there. The
- * version-specific {@code UniformGeneratorMixin} pins those rolls only inside this scope.
+ * version-specific mixins in {@code mixin/provider} pin those rolls only inside this scope.
  */
 @Mixin(TradeCost.class)
 public abstract class TradeCostMixin {

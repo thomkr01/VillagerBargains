@@ -38,23 +38,24 @@ public final class BargainCommands {
         dispatcher.register(Commands.literal("bargain")
                 .requires(BargainCommands::anyAllowed)
                 .executes(context -> {
-                    context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: pricing "
-                            + VillagerBargainsConfig.pricingMode() + ", bookLevels " + VillagerBargainsConfig.bookLevelMode()
-                            + ", gearStrength " + VillagerBargainsConfig.gearStrengthMode()), false);
+                    context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: " + summary()), false);
                     return 1;
                 })
                 .then(Commands.literal("reload")
                         .requires(source -> allowed(source, "reload"))
                         .executes(context -> {
                             VillagerBargainsConfig.load();
-                            context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: reloaded config, pricing "
-                                    + VillagerBargainsConfig.pricingMode() + ", bookLevels " + VillagerBargainsConfig.bookLevelMode()
-                                    + ", gearStrength " + VillagerBargainsConfig.gearStrengthMode()), true);
+                            context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: reloaded config, " + summary()), true);
                             return 1;
                         }))
                 .then(setting("price", "pricing", VillagerBargainsConfig::pricingMode, VillagerBargainsConfig::setPricingMode))
                 .then(setting("books", "bookLevels", VillagerBargainsConfig::bookLevelMode, VillagerBargainsConfig::setBookLevelMode))
                 .then(setting("gear", "gearStrength", VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode)));
+    }
+
+    private static String summary() {
+        return "pricing " + VillagerBargainsConfig.pricingMode() + ", bookLevels " + VillagerBargainsConfig.bookLevelMode()
+                + ", gearStrength " + VillagerBargainsConfig.gearStrengthMode();
     }
 
     /** {@code /bargain <name>} shows the option, {@code /bargain <name> <mode>} sets and saves it. */

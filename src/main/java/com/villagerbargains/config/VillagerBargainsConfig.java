@@ -13,6 +13,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 
 /**
  * Reads and writes {@code config/villagerbargains.json}.
@@ -113,7 +114,7 @@ public final class VillagerBargainsConfig {
         }
         String value = element.getAsString();
         try {
-            return PricingMode.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+            return PricingMode.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             VillagerBargains.LOGGER.warn("Unknown mode '{}' for '{}', using {}", value, key, fallback);
             return fallback;

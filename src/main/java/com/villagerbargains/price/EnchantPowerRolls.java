@@ -53,7 +53,7 @@ public final class EnchantPowerRolls {
     public static int record(int rolled, int lowest, int highest, PricingMode strength) {
         List<Roll> rolls = OPEN.get().peek();
         if (rolls == null) {
-            return rolled; // Not a gear trade (chest loot, mob gear, other number providers): vanilla.
+            return rolled;
         }
         int power = strength.pick(rolled, lowest, highest);
         rolls.add(new Roll(power, lowest, highest)); // Vanilla prices the power it enchants with, so record that.

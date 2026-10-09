@@ -33,6 +33,6 @@ public abstract class UniformIntProviderMixin {
         if (ThreadScope.TRADE_COST.isActive()) {
             return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
         }
-        return EnchantPowerRolls.record(rolled, min, max); // Enchanted gear power: vanilla unless gearStrength is set.
+        return EnchantPowerRolls.record(rolled, min, max);
     }
 }
