@@ -23,7 +23,7 @@ public final class BookLevels {
     /** {@link #resolve(int, int, int)} with an explicit mode. Unchanged outside a trade book. */
     public static int resolve(int rolled, int lowest, int highest, PricingMode mode) {
         if (!ThreadScope.TRADE_BOOK.isActive()) {
-            return rolled; // Not a trade (chest loot, mob gear): keep the vanilla level.
+            return rolled;
         }
         return mode.pick(rolled, lowest, highest);
     }
