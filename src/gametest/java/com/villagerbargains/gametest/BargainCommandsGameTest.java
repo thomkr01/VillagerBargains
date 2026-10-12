@@ -24,13 +24,15 @@ import java.util.List;
  * alongside never see the changes.
  */
 public final class BargainCommandsGameTest {
-    private static final List<String> SUBCOMMANDS = List.of("reload", "price", "books", "gear");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "price", "books", "gear", "demand", "trader");
     /** Every command form; none of them may run for a player without operator. */
     private static final List<String> EVERY_COMMAND = List.of(
             "bargain", "bargain reload",
             "bargain price", "bargain price minimum", "bargain price normal", "bargain price maximum",
             "bargain books", "bargain books minimum", "bargain books normal", "bargain books maximum",
-            "bargain gear", "bargain gear minimum", "bargain gear normal", "bargain gear maximum");
+            "bargain gear", "bargain gear minimum", "bargain gear normal", "bargain gear maximum",
+            "bargain demand", "bargain demand vanilla", "bargain demand pinned",
+            "bargain trader", "bargain trader vanilla", "bargain trader pinned");
 
     @GameTest
     public void everySettingCanBeChanged(GameTestHelper helper) {
@@ -49,6 +51,25 @@ public final class BargainCommandsGameTest {
             run(helper, "bargain price");
             run(helper, "bargain books");
             run(helper, "bargain gear");
+            run(helper, "bargain demand");
+            run(helper, "bargain trader");
+        });
+        helper.succeed();
+    }
+
+    @GameTest
+    public void demandAndTraderCanBeChanged(GameTestHelper helper) {
+        withConfigRestored(() -> {
+            run(helper, "bargain demand vanilla");
+            helper.assertTrue(VillagerBargainsConfig.vanillaDemand(), "vanillaDemand after /bargain demand vanilla");
+            helper.assertTrue(!VillagerBargainsConfig.vanillaWanderingTrader(), "/bargain demand leaves vanillaWanderingTrader alone");
+            run(helper, "bargain trader vanilla");
+            helper.assertTrue(VillagerBargainsConfig.vanillaWanderingTrader(), "vanillaWanderingTrader after /bargain trader vanilla");
+            run(helper, "bargain demand pinned");
+            helper.assertTrue(!VillagerBargainsConfig.vanillaDemand(), "vanillaDemand after /bargain demand pinned");
+            helper.assertTrue(VillagerBargainsConfig.vanillaWanderingTrader(), "/bargain demand leaves vanillaWanderingTrader alone");
+            run(helper, "bargain trader pinned");
+            helper.assertTrue(!VillagerBargainsConfig.vanillaWanderingTrader(), "vanillaWanderingTrader after /bargain trader pinned");
         });
         helper.succeed();
     }
@@ -59,7 +80,8 @@ public final class BargainCommandsGameTest {
             run(helper, "bargain price minimum");
             try {
                 Files.writeString(FabricLoader.getInstance().getConfigDir().resolve("villagerbargains.json"),
-                        "{\"pricing\": \"MAXIMUM\", \"bookLevels\": \"MAXIMUM\", \"gearStrength\": \"MINIMUM\"}");
+                        "{\"pricing\": \"MAXIMUM\", \"bookLevels\": \"MAXIMUM\", \"gearStrength\": \"MINIMUM\","
+                                + " \"vanillaDemand\": true, \"vanillaWanderingTrader\": true}");
             } catch (IOException e) {
                 throw helper.assertionException("Could not write the config file: %s", e.getMessage());
             }
@@ -67,6 +89,8 @@ public final class BargainCommandsGameTest {
             helper.assertValueEqual(VillagerBargainsConfig.pricingMode(), PricingMode.MAXIMUM, "pricing after reload");
             helper.assertValueEqual(VillagerBargainsConfig.bookLevelMode(), PricingMode.MAXIMUM, "bookLevels after reload");
             helper.assertValueEqual(VillagerBargainsConfig.gearStrengthMode(), PricingMode.MINIMUM, "gearStrength after reload");
+            helper.assertTrue(VillagerBargainsConfig.vanillaDemand(), "vanillaDemand after reload");
+            helper.assertTrue(VillagerBargainsConfig.vanillaWanderingTrader(), "vanillaWanderingTrader after reload");
         });
         helper.succeed();
     }
@@ -198,12 +222,16 @@ public final class BargainCommandsGameTest {
         PricingMode pricing = VillagerBargainsConfig.pricingMode();
         PricingMode books = VillagerBargainsConfig.bookLevelMode();
         PricingMode gear = VillagerBargainsConfig.gearStrengthMode();
+        boolean vanillaDemand = VillagerBargainsConfig.vanillaDemand();
+        boolean vanillaTrader = VillagerBargainsConfig.vanillaWanderingTrader();
         try {
             action.run();
         } finally {
             VillagerBargainsConfig.setPricingMode(pricing);
             VillagerBargainsConfig.setBookLevelMode(books);
             VillagerBargainsConfig.setGearStrengthMode(gear);
+            VillagerBargainsConfig.setVanillaDemand(vanillaDemand);
+            VillagerBargainsConfig.setVanillaWanderingTrader(vanillaTrader);
         }
     }
 }

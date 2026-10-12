@@ -51,6 +51,16 @@ public final class DemandRuleGameTest {
     }
 
     @GameTest
+    public void vanillaDemandSettingKeepsVanillaDemand(GameTestHelper helper) {
+        TradeTestSupport.withVanillaDemand(true, () -> {
+            assertCostAfterRestock(helper, PricingMode.MINIMUM, MAX_USES, 16); // MINIMUM alone would give 10.
+            assertCostAfterRestock(helper, PricingMode.MAXIMUM, 0, 10); // MAXIMUM alone would give 16.
+            return null;
+        });
+        helper.succeed();
+    }
+
+    @GameTest
     public void newOffersStartWithPinnedDemand(GameTestHelper helper) {
         Holder<VillagerTrade> trade = helper.getLevel().registryAccess()
                 .lookupOrThrow(Registries.VILLAGER_TRADE).getOrThrow(LIBRARIAN_BOOK);

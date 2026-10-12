@@ -62,7 +62,7 @@ public final class EnchantPowerRolls {
 
     /** The cost vanilla computed from the recorded rolls, with every roll resolved by the pricing mode. */
     public static int pinnedCost(int vanillaCost) {
-        return pinnedCost(vanillaCost, VillagerBargainsConfig.pricingMode());
+        return pinnedCost(vanillaCost, TradePricing.priceMode());
     }
 
     /**

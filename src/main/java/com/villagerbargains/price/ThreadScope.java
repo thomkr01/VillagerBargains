@@ -14,6 +14,8 @@ public final class ThreadScope {
     public static final ThreadScope TRADE_COST = new ThreadScope();
     /** An enchanted book for a trade is being made. */
     public static final ThreadScope TRADE_BOOK = new ThreadScope();
+    /** A wandering trader that is set to vanilla prices is making its offers. */
+    public static final ThreadScope VANILLA_TRADER = new ThreadScope();
 
     private final ThreadLocal<Integer> depth = ThreadLocal.withInitial(() -> 0);
 
