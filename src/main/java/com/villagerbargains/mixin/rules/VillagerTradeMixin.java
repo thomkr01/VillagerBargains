@@ -6,7 +6,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.DemandPinnable;
 import com.villagerbargains.price.ThreadScope;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.VillagerTrade;
@@ -34,9 +33,8 @@ import org.spongepowered.asm.mixin.injection.At;
 public abstract class VillagerTradeMixin {
     @WrapMethod(method = "getOffer")
     private MerchantOffer villagerbargains$markVanillaTrader(LootContext context, Operation<MerchantOffer> original) {
-        Entity trader = context.getOptionalParameter(LootContextParams.THIS_ENTITY);
-        if (VillagerBargainsConfig.vanillaWanderingTrader() && trader != null
-                && trader.getType() == EntityTypes.WANDERING_TRADER) {
+        if (VillagerBargainsConfig.vanillaWanderingTrader() && context.hasParameter(LootContextParams.THIS_ENTITY)
+                && context.getParameter(LootContextParams.THIS_ENTITY).getType() == EntityTypes.WANDERING_TRADER) {
             return ThreadScope.VANILLA_TRADER.run(() -> original.call(context));
         }
         return original.call(context);
