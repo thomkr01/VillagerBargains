@@ -99,6 +99,29 @@ In game: Mod Menu → Villager Bargains → Gear strength, or `/bargain gear`.
   power uses the random numbers that follow differently.
 * Like the other settings, it applies to trades a villager unlocks after the change.
 
+## Vanilla demand and wandering traders
+
+Two optional on/off settings bring back vanilla behavior where you want it. Both are off by
+default, so the best prices possible stay the default.
+
+```json
+{
+  "pricing": "MINIMUM",
+  "vanillaDemand": true,
+  "vanillaWanderingTrader": false
+}
+```
+
+| Setting | When `true` |
+|---------|-------------|
+| `vanillaDemand` | The demand surcharge stays vanilla in every `pricing` mode. Random price rolls still follow `pricing`. |
+| `vanillaWanderingTrader` | Wandering trader offers keep vanilla random prices and vanilla demand. Villagers still follow `pricing`. |
+
+In game: Mod Menu → Villager Bargains → Vanilla demand / Vanilla wandering trader, or
+`/bargain demand` and `/bargain trader`. `vanillaWanderingTrader` only covers prices and demand;
+`bookLevels` and `gearStrength` still apply to wandering trader gear. Like the other settings, both
+apply to trades unlocked after the change, and `vanillaDemand` reaches existing offers at the next restock.
+
 ## Commands
 
 `/bargain` changes the settings without restarting the server. Every change is saved to
@@ -108,11 +131,13 @@ follows the new pricing mode from the next restock.
 
 | Command | Permission node | What it does |
 |---------|-----------------|--------------|
-| `/bargain` | any of the nodes below | Shows the current `pricing`, `bookLevels` and `gearStrength`. |
+| `/bargain` | any of the nodes below | Shows the current `pricing`, `bookLevels`, `gearStrength`, `vanillaDemand` and `vanillaWanderingTrader`. |
 | `/bargain reload` | `villagerbargains.command.reload` | Re-reads `config/villagerbargains.json` (after editing the file by hand). |
 | `/bargain price` / `/bargain price <minimum\|normal\|maximum>` | `villagerbargains.command.price` | Shows / sets `pricing`. |
 | `/bargain books` / `/bargain books <minimum\|normal\|maximum>` | `villagerbargains.command.books` | Shows / sets `bookLevels`. |
 | `/bargain gear` / `/bargain gear <minimum\|normal\|maximum>` | `villagerbargains.command.gear` | Shows / sets `gearStrength`. |
+| `/bargain demand` / `/bargain demand <vanilla\|pinned>` | `villagerbargains.command.demand` | Shows / sets `vanillaDemand` (`vanilla` is true). |
+| `/bargain trader` / `/bargain trader <vanilla\|pinned>` | `villagerbargains.command.trader` | Shows / sets `vanillaWanderingTrader` (`vanilla` is true). |
 
 Arguments tab-complete. Changes are announced to other operators, like vanilla admin
 commands. The commands also work in single player with cheats enabled.
@@ -290,6 +315,7 @@ src/main/java/com/villagerbargains/
 ├── price/ThreadScope.java         marks "a trade cost / trade book is being made"
 ├── price/EnchantPowerRolls.java   enchanted gear: vanilla power for the item, pinned value for the price
 ├── price/DemandRule.java          how each mode pins a trade's demand
+├── price/TradePricing.java        the pricing and demand mode in force for the trade being made
 ├── price/DemandPinnable.java      lets VillagerTradeMixin pin a new offer's demand
 ├── price/BookLevels.java          traded enchanted books: vanilla level roll → configured level
 └── mixin/
@@ -314,6 +340,7 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
 ├── DemandRuleGameTest             demand on new offers and restocks
 ├── AllTradesSweepGameTest         every trade of every profession + wandering trader
 ├── UniformTradeCostGameTest       uniform trade costs vs. other uniform rolls
+├── VanillaWanderingTraderGameTest wandering trader prices and demand with vanillaWanderingTrader
 └── BargainCommandsGameTest        /bargain commands change and reload the config
 ```
 
@@ -339,6 +366,9 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
     sequence, and `MINIMUM ≤ NORMAL ≤ MAXIMUM` for every price. Exploration-map trades are
     skipped (their price is fixed).
   * **Uniform:** `uniform` rolls outside trade costs (loot tables, etc.) are left alone.
+  * **Vanilla settings:** with `vanillaDemand` the demand follows vanilla in every mode; with
+    `vanillaWanderingTrader` a wandering trader's prices and demand are vanilla while a villager's
+    stay pinned.
   * **Commands:** `/bargain` subcommands set every option, each one only its own (`price`,
     `books` and `gear` never change each other), and `reload` re-reads the file.
   * **Permissions:** an operator can use every command; a player without operator can neither

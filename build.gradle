@@ -45,6 +45,9 @@ dependencies {
     // Permission nodes for LuckPerms & co. Shipped by LuckPerms itself; only used when installed.
     compileOnly "me.lucko:fabric-permissions-api:${project.fabric_permissions_api_version}"
 
+    // Fabric API adds interfaces to Entity, so javac needs it to read an entity's type. Not required at runtime.
+    compileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
     // Only for `runClient` / `runServer` in development (Mod Menu needs Fabric API).
     localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"

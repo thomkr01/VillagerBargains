@@ -5,6 +5,7 @@ import com.villagerbargains.config.VillagerBargainsConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.util.Unit;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** Helpers shared by the game tests: seeded trade contexts and temporary pricing / book level modes. */
+/** Helpers shared by the game tests: seeded trade contexts and temporary settings. */
 final class TradeTestSupport {
     private TradeTestSupport() {}
 
@@ -65,7 +66,7 @@ final class TradeTestSupport {
      * Builds the same loot context {@code AbstractVillager#addOffersFromTradeSet} uses,
      * but with a fixed seed so runs can be compared.
      */
-    static LootContext tradeContext(GameTestHelper helper, Villager trader, long seed) {
+    static LootContext tradeContext(GameTestHelper helper, Entity trader, long seed) {
         LootParams params = new LootParams.Builder(helper.getLevel())
                 .withParameter(LootContextParams.ORIGIN, trader.position())
                 .withParameter(LootContextParams.THIS_ENTITY, trader)
@@ -89,9 +90,19 @@ final class TradeTestSupport {
         return with(VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode, mode, action);
     }
 
-    private static <T> T with(Supplier<PricingMode> get, Consumer<PricingMode> set, PricingMode mode, Supplier<T> action) {
-        PricingMode previous = get.get();
-        set.accept(mode);
+    /** Runs {@code action} with vanilla demand {@code on} or off, then restores the previous value. */
+    static <T> T withVanillaDemand(boolean on, Supplier<T> action) {
+        return with(VillagerBargainsConfig::vanillaDemand, VillagerBargainsConfig::setVanillaDemand, on, action);
+    }
+
+    /** Runs {@code action} with vanilla wandering trader prices {@code on} or off, then restores the previous value. */
+    static <T> T withVanillaWanderingTrader(boolean on, Supplier<T> action) {
+        return with(VillagerBargainsConfig::vanillaWanderingTrader, VillagerBargainsConfig::setVanillaWanderingTrader, on, action);
+    }
+
+    private static <V, T> T with(Supplier<V> get, Consumer<V> set, V value, Supplier<T> action) {
+        V previous = get.get();
+        set.accept(value);
         try {
             return action.get();
         } finally {

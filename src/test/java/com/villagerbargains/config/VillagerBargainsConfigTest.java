@@ -7,6 +7,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VillagerBargainsConfigTest {
     private static final String KEY = "bookLevels";
@@ -62,5 +64,23 @@ class VillagerBargainsConfigTest {
         json.addProperty(KEY, "MINIMUM");
         assertEquals(PricingMode.MAXIMUM, VillagerBargainsConfig.parseMode(json, "pricing", PricingMode.MINIMUM));
         assertEquals(PricingMode.MINIMUM, VillagerBargainsConfig.parseMode(json, KEY, PricingMode.NORMAL));
+    }
+
+    @Test
+    void flagsReadTrueAndFalse() {
+        JsonObject json = new JsonObject();
+        json.addProperty("vanillaDemand", true);
+        json.addProperty("vanillaWanderingTrader", false);
+        assertTrue(VillagerBargainsConfig.parseFlag(json, "vanillaDemand", false));
+        assertFalse(VillagerBargainsConfig.parseFlag(json, "vanillaWanderingTrader", true));
+    }
+
+    @Test
+    void missingOrInvalidFlagsUseTheFallback() {
+        JsonObject json = new JsonObject();
+        json.addProperty("vanillaDemand", "true");
+        assertFalse(VillagerBargainsConfig.parseFlag(json, "vanillaDemand", false));
+        assertTrue(VillagerBargainsConfig.parseFlag(json, "vanillaWanderingTrader", true));
+        assertFalse(VillagerBargainsConfig.parseFlag(null, "vanillaDemand", false));
     }
 }

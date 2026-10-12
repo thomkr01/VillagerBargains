@@ -1,7 +1,6 @@
 package com.villagerbargains.price;
 
 import com.villagerbargains.config.PricingMode;
-import com.villagerbargains.config.VillagerBargainsConfig;
 
 /**
  * Pins the demand of a trade offer: the in-game rule that raises a price after the trade
@@ -23,7 +22,7 @@ public final class DemandRule {
 
     /** Pins {@code demand} for the configured pricing mode. */
     public static int pin(int demand, int maxUses) {
-        return pin(VillagerBargainsConfig.pricingMode(), demand, maxUses);
+        return pin(TradePricing.demandMode(), demand, maxUses);
     }
 
     /** Pins {@code demand} for {@code mode}. */

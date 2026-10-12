@@ -2,9 +2,9 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.EnchantPowerRolls;
 import com.villagerbargains.price.ThreadScope;
+import com.villagerbargains.price.TradePricing;
 import net.minecraft.util.RandomSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -35,7 +35,7 @@ public abstract class LegacyUniformGeneratorMixin {
     private int villagerbargains$resolveIntRoll(RandomSource random, int min, int max, Operation<Integer> original) {
         int rolled = original.call(random, min, max);
         if (ThreadScope.TRADE_COST.isActive()) {
-            return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
+            return TradePricing.priceMode().pick(rolled, min, max);
         }
         return EnchantPowerRolls.record(rolled, min, max);
     }
@@ -46,6 +46,6 @@ public abstract class LegacyUniformGeneratorMixin {
     )
     private float villagerbargains$resolveFloatRoll(RandomSource random, float min, float max, Operation<Float> original) {
         float rolled = original.call(random, min, max);
-        return ThreadScope.TRADE_COST.isActive() ? VillagerBargainsConfig.pricingMode().pick(rolled, min, max) : rolled;
+        return ThreadScope.TRADE_COST.isActive() ? TradePricing.priceMode().pick(rolled, min, max) : rolled;
     }
 }

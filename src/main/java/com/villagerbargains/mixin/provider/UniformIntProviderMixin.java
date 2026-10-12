@@ -2,9 +2,9 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.EnchantPowerRolls;
 import com.villagerbargains.price.ThreadScope;
+import com.villagerbargains.price.TradePricing;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.storage.loot.providers.number.ints.UniformGenerator;
 import org.spongepowered.asm.mixin.Mixin;
@@ -31,7 +31,7 @@ public abstract class UniformIntProviderMixin {
     private int villagerbargains$resolveIntRoll(RandomSource random, int min, int max, Operation<Integer> original) {
         int rolled = original.call(random, min, max);
         if (ThreadScope.TRADE_COST.isActive()) {
-            return VillagerBargainsConfig.pricingMode().pick(rolled, min, max);
+            return TradePricing.priceMode().pick(rolled, min, max);
         }
         return EnchantPowerRolls.record(rolled, min, max);
     }

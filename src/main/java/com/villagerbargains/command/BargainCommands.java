@@ -12,8 +12,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.permissions.Permission;
 import net.minecraft.server.permissions.PermissionLevel;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -27,7 +30,7 @@ import java.util.function.Supplier;
 public final class BargainCommands {
     public static final String PERMISSION_PREFIX = "villagerbargains.command.";
     /** Every subcommand, which is also the last part of its permission node. */
-    static final List<String> NODES = List.of("reload", "price", "books", "gear");
+    static final List<String> NODES = List.of("reload", "price", "books", "gear", "demand", "trader");
     /** Operators, the same level as {@code /gamerule}. */
     private static final PermissionLevel DEFAULT_LEVEL = PermissionLevel.byId(2);
     private static final boolean PERMISSIONS_API = FabricLoader.getInstance().isModLoaded("fabric-permissions-api-v0");
@@ -48,34 +51,55 @@ public final class BargainCommands {
                             context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: reloaded config, " + summary()), true);
                             return 1;
                         }))
-                .then(setting("price", "pricing", VillagerBargainsConfig::pricingMode, VillagerBargainsConfig::setPricingMode))
-                .then(setting("books", "bookLevels", VillagerBargainsConfig::bookLevelMode, VillagerBargainsConfig::setBookLevelMode))
-                .then(setting("gear", "gearStrength", VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode)));
+                .then(modeSetting("price", "pricing", VillagerBargainsConfig::pricingMode, VillagerBargainsConfig::setPricingMode))
+                .then(modeSetting("books", "bookLevels", VillagerBargainsConfig::bookLevelMode, VillagerBargainsConfig::setBookLevelMode))
+                .then(modeSetting("gear", "gearStrength", VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode))
+                .then(flagSetting("demand", "vanillaDemand", VillagerBargainsConfig::vanillaDemand, VillagerBargainsConfig::setVanillaDemand))
+                .then(flagSetting("trader", "vanillaWanderingTrader", VillagerBargainsConfig::vanillaWanderingTrader, VillagerBargainsConfig::setVanillaWanderingTrader)));
     }
 
     private static String summary() {
         return "pricing " + VillagerBargainsConfig.pricingMode() + ", bookLevels " + VillagerBargainsConfig.bookLevelMode()
-                + ", gearStrength " + VillagerBargainsConfig.gearStrengthMode();
+                + ", gearStrength " + VillagerBargainsConfig.gearStrengthMode()
+                + ", vanillaDemand " + VillagerBargainsConfig.vanillaDemand()
+                + ", vanillaWanderingTrader " + VillagerBargainsConfig.vanillaWanderingTrader();
     }
 
-    /** {@code /bargain <name>} shows the option, {@code /bargain <name> <mode>} sets and saves it. */
+    /** {@code /bargain <name>} shows the option, {@code /bargain <name> <choice>} sets and saves it. */
     private static LiteralArgumentBuilder<CommandSourceStack> setting(
-            String name, String key, Supplier<PricingMode> get, Consumer<PricingMode> set) {
+            String name, String key, Supplier<?> get, Map<String, Runnable> choices) {
         LiteralArgumentBuilder<CommandSourceStack> node = Commands.literal(name)
                 .requires(source -> allowed(source, name))
                 .executes(context -> {
                     context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: " + key + " is " + get.get()), false);
                     return 1;
                 });
-        for (PricingMode mode : PricingMode.values()) {
-            node.then(Commands.literal(mode.name().toLowerCase(Locale.ROOT)).executes(context -> {
-                set.accept(mode);
-                context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: " + key + " set to " + mode
-                        + " (applies to trades villagers unlock from now on)"), true);
-                return 1;
-            }));
-        }
+        choices.forEach((word, apply) -> node.then(Commands.literal(word).executes(context -> {
+            apply.run();
+            context.getSource().sendSuccess(() -> Component.literal("Villager Bargains: " + key + " set to "
+                    + word.toUpperCase(Locale.ROOT) + " (applies to trades villagers unlock from now on)"), true);
+            return 1;
+        })));
         return node;
+    }
+
+    /** A setting with one choice per {@link PricingMode}: minimum, normal, maximum. */
+    private static LiteralArgumentBuilder<CommandSourceStack> modeSetting(
+            String name, String key, Supplier<PricingMode> get, Consumer<PricingMode> set) {
+        Map<String, Runnable> choices = new LinkedHashMap<>();
+        for (PricingMode mode : PricingMode.values()) {
+            choices.put(mode.name().toLowerCase(Locale.ROOT), () -> set.accept(mode));
+        }
+        return setting(name, key, get, choices);
+    }
+
+    /** An on/off setting with the choices {@code vanilla} (true) and {@code pinned} (false). */
+    private static LiteralArgumentBuilder<CommandSourceStack> flagSetting(
+            String name, String key, BooleanSupplier get, Consumer<Boolean> set) {
+        Map<String, Runnable> choices = new LinkedHashMap<>();
+        choices.put("vanilla", () -> set.accept(true));
+        choices.put("pinned", () -> set.accept(false));
+        return setting(name, key, () -> get.getAsBoolean() ? "VANILLA" : "PINNED", choices);
     }
 
     /**
