@@ -17,7 +17,8 @@ import java.util.function.Consumer;
 
 /**
  * Config screen opened from Mod Menu: three buttons that cycle MINIMUM → NORMAL → MAXIMUM, for
- * the pricing mode, the level of traded enchanted books and the strength of traded enchanted gear.
+ * the pricing mode, the level of traded enchanted books and the strength of traded enchanted gear,
+ * and two on/off buttons that bring back vanilla demand and vanilla wandering trader prices.
  *
  * <p>Each choice is saved as soon as it changes. It applies to trades generated from then on;
  * offers a villager already has are stored in the world and keep their price and level.
@@ -47,6 +48,10 @@ public final class VillagerBargainsConfigScreen extends Screen {
                 VillagerBargainsConfig::setBookLevelMode));
         contents.addChild(modeButton("gearStrength", VillagerBargainsConfig.gearStrengthMode(),
                 VillagerBargainsConfig::setGearStrengthMode));
+        contents.addChild(flagButton("vanillaDemand", VillagerBargainsConfig.vanillaDemand(),
+                VillagerBargainsConfig::setVanillaDemand));
+        contents.addChild(flagButton("vanillaWanderingTrader", VillagerBargainsConfig.vanillaWanderingTrader(),
+                VillagerBargainsConfig::setVanillaWanderingTrader));
         contents.addChild(new MultiLineTextWidget(Component.translatable("villagerbargains.config.note"), font)
                 .setMaxWidth(CONTENT_WIDTH)
                 .setCentered(true));
@@ -68,6 +73,19 @@ public final class VillagerBargainsConfigScreen extends Screen {
                 .create(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT,
                         Component.translatable("villagerbargains.config." + setting),
                         (button, mode) -> onChange.accept(mode));
+    }
+
+    /**
+     * An on/off button for one setting. Its label is {@code villagerbargains.config.<setting>},
+     * its tooltip is {@code villagerbargains.<setting>.on.description} or {@code .off.description}.
+     */
+    private CycleButton<Boolean> flagButton(String setting, boolean current, Consumer<Boolean> onChange) {
+        return CycleButton.onOffBuilder(current)
+                .withTooltip(on -> Tooltip.create(
+                        Component.translatable("villagerbargains." + setting + (on ? ".on" : ".off") + ".description")))
+                .create(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT,
+                        Component.translatable("villagerbargains.config." + setting),
+                        (button, on) -> onChange.accept(on));
     }
 
     @Override

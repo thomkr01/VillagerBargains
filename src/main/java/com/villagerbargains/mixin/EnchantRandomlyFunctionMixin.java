@@ -3,9 +3,9 @@ package com.villagerbargains.mixin;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.BookLevels;
 import com.villagerbargains.price.ThreadScope;
+import com.villagerbargains.price.TradePricing;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -57,6 +57,6 @@ public abstract class EnchantRandomlyFunctionMixin {
     )
     private int villagerbargains$resolveBookPriceRoll(RandomSource random, int bound, Operation<Integer> original) {
         int rolled = original.call(random, bound); // Always roll, so the random sequence stays vanilla.
-        return VillagerBargainsConfig.pricingMode().pick(rolled, 0, bound - 1);
+        return TradePricing.priceMode().pick(rolled, 0, bound - 1);
     }
 }

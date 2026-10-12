@@ -48,8 +48,9 @@ feature/* ← individual features / fixes, branched from develop
 | Book level roll (non-price roll) | `price/BookLevels.java`, hook in `mixin/EnchantRandomlyFunctionMixin.java` |
 | Gear power roll (non-price roll) | `price/EnchantPowerRolls.java`, hooks in `mixin/provider/` |
 | Demand rule | `price/DemandRule.java`, hooks in `mixin/rules/` + `villagerbargains.rules.mixins.json` |
+| Which mode applies to a trade (`vanillaDemand`, `vanillaWanderingTrader`) | `price/TradePricing.java`, scope opened in `mixin/rules/VillagerTradeMixin.java` |
 | Mod Menu screen / texts | `src/client/java/…/client/`, `src/main/resources/assets/villagerbargains/lang/` |
-| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedBookLevelGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest`, `BargainCommandsGameTest` |
+| Game tests | `src/gametest/java/` (must also run on every supported version): `EnchantedBookPriceGameTest`, `EnchantedBookLevelGameTest`, `EnchantedGearPriceGameTest`, `DemandRuleGameTest`, `AllTradesSweepGameTest`, `UniformTradeCostGameTest`, `VanillaWanderingTraderGameTest`, `BargainCommandsGameTest` |
 | Commands / permission nodes | `src/main/java/com/villagerbargains/command/BargainCommands.java`, hook in `mixin/CommandsMixin.java` |
 | Supported Minecraft versions | `"minecraft"` in `fabric.mod.json` + the matrix in `.github/workflows/build.yml` |
 | Compile-against versions, mod version | `gradle.properties` |

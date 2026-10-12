@@ -2,8 +2,8 @@ package com.villagerbargains.mixin.provider;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.ThreadScope;
+import com.villagerbargains.price.TradePricing;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.storage.loot.providers.number.floats.UniformGenerator;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,6 +27,6 @@ public abstract class UniformFloatProviderMixin {
     )
     private float villagerbargains$resolveFloatRoll(RandomSource random, float min, float max, Operation<Float> original) {
         float rolled = original.call(random, min, max);
-        return ThreadScope.TRADE_COST.isActive() ? VillagerBargainsConfig.pricingMode().pick(rolled, min, max) : rolled;
+        return ThreadScope.TRADE_COST.isActive() ? TradePricing.priceMode().pick(rolled, min, max) : rolled;
     }
 }

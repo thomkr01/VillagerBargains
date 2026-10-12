@@ -21,22 +21,27 @@ import java.util.Locale;
 
 /**
  * Opens the Mod Menu settings screen in a real game client and uses it like a player would:
- * every text is translated, both buttons cycle MINIMUM → NORMAL → MAXIMUM and save to the config
- * file, and Done and Esc both return to the previous screen. Screenshots of the screen are written
+ * every text is translated, the mode buttons cycle MINIMUM → NORMAL → MAXIMUM, the vanilla buttons
+ * switch on, all of them save to the config file, and Done and Esc both return to the previous screen. Screenshots of the screen are written
  * to the client's {@code screenshots} folder, which CI uploads.
  */
 public final class ConfigScreenClientGameTest implements FabricClientGameTest {
     private static final String[] SETTINGS = {"pricing", "bookLevels", "gearStrength"};
+    private static final String[] FLAGS = {"vanillaDemand", "vanillaWanderingTrader"};
 
     @Override
     public void runTest(ClientGameTestContext context) {
         PricingMode previousPricing = VillagerBargainsConfig.pricingMode();
         PricingMode previousBookLevels = VillagerBargainsConfig.bookLevelMode();
         PricingMode previousGearStrength = VillagerBargainsConfig.gearStrengthMode();
+        boolean previousVanillaDemand = VillagerBargainsConfig.vanillaDemand();
+        boolean previousVanillaTrader = VillagerBargainsConfig.vanillaWanderingTrader();
         try {
             VillagerBargainsConfig.setPricingMode(PricingMode.MINIMUM);
             VillagerBargainsConfig.setBookLevelMode(PricingMode.NORMAL);
             VillagerBargainsConfig.setGearStrengthMode(PricingMode.NORMAL);
+            VillagerBargainsConfig.setVanillaDemand(false);
+            VillagerBargainsConfig.setVanillaWanderingTrader(false);
 
             assertTranslated();
 
@@ -63,6 +68,15 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
             check(VillagerBargainsConfig.gearStrengthMode() == PricingMode.MAXIMUM,
                     "Gear strength should be MAXIMUM, is " + VillagerBargainsConfig.gearStrengthMode());
 
+            context.clickScreenButton("villagerbargains.config.vanillaDemand");
+            context.waitTick();
+            check(VillagerBargainsConfig.vanillaDemand() && !VillagerBargainsConfig.vanillaWanderingTrader(),
+                    "Only vanilla demand should be on after clicking its button");
+            context.clickScreenButton("villagerbargains.config.vanillaWanderingTrader");
+            context.waitTick();
+            check(VillagerBargainsConfig.vanillaDemand() && VillagerBargainsConfig.vanillaWanderingTrader(),
+                    "Both vanilla settings should be on after clicking both buttons");
+
             assertButtonsShow(context, screen, "Maximum", "Minimum");
             context.takeScreenshot("villagerbargains-config-changed");
             assertSavedFile(PricingMode.MAXIMUM, PricingMode.MINIMUM);
@@ -77,6 +91,8 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
             VillagerBargainsConfig.setPricingMode(previousPricing);
             VillagerBargainsConfig.setBookLevelMode(previousBookLevels);
             VillagerBargainsConfig.setGearStrengthMode(previousGearStrength);
+            VillagerBargainsConfig.setVanillaDemand(previousVanillaDemand);
+            VillagerBargainsConfig.setVanillaWanderingTrader(previousVanillaTrader);
         }
     }
 
@@ -100,6 +116,11 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
                 keys.add(key + ".description");
             }
         }
+        for (String flag : FLAGS) {
+            keys.add("villagerbargains.config." + flag);
+            keys.add("villagerbargains." + flag + ".on.description");
+            keys.add("villagerbargains." + flag + ".off.description");
+        }
         for (String key : keys) {
             String text = Component.translatable(key).getString();
             check(!text.equals(key) && !text.isBlank(), "No translation for " + key);
@@ -120,6 +141,10 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         check(labels.contains("Pricing: " + pricing), "Expected button 'Pricing: " + pricing + "', got " + labels);
         check(labels.contains("Book levels: " + bookLevels), "Expected button 'Book levels: " + bookLevels + "', got " + labels);
         check(labels.stream().anyMatch(label -> label.startsWith("Gear strength: ")), "Expected a 'Gear strength' button, got " + labels);
+        for (String flag : FLAGS) {
+            String name = Component.translatable("villagerbargains.config." + flag).getString();
+            check(labels.stream().anyMatch(label -> label.startsWith(name + ": ")), "Expected a '" + name + "' button, got " + labels);
+        }
         for (String label : labels) {
             check(!label.contains("villagerbargains."), "Untranslated text on screen: " + label);
         }
@@ -144,6 +169,8 @@ public final class ConfigScreenClientGameTest implements FabricClientGameTest {
         check(json.contains("\"pricing\": \"" + pricing.name() + "\""), "Config file has wrong pricing: " + json);
         check(json.contains("\"bookLevels\": \"" + bookLevels.name() + "\""), "Config file has wrong book levels: " + json);
         check(json.contains("\"gearStrength\": \"MAXIMUM\""), "Config file has wrong gear strength: " + json);
+        check(json.contains("\"vanillaDemand\": true"), "Config file has wrong vanilla demand: " + json);
+        check(json.contains("\"vanillaWanderingTrader\": true"), "Config file has wrong vanilla wandering trader: " + json);
     }
 
     private static void check(boolean condition, String message) {

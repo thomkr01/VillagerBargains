@@ -3,6 +3,8 @@
   "villagerbargains.config.pricing": "Pricing",
   "villagerbargains.config.bookLevels": "Book levels",
   "villagerbargains.config.gearStrength": "Gear strength",
+  "villagerbargains.config.vanillaDemand": "Vanilla demand",
+  "villagerbargains.config.vanillaWanderingTrader": "Vanilla wandering trader",
   "villagerbargains.config.note": "Applies to trades a villager unlocks from now on. Trades it already offers keep their price, book level and gear enchantments; demand follows the new pricing mode from the villager's next restock.",
   "villagerbargains.pricing.minimum": "Minimum",
   "villagerbargains.pricing.minimum.description": "Every random price (books and enchanted gear) is the cheapest vanilla can roll, and demand never raises prices.",
@@ -22,5 +24,9 @@
   "villagerbargains.gearStrength.normal.description": "Vanilla behaviour: traded enchanted gear gets a random enchanting power.",
   "villagerbargains.gearStrength.maximum": "Maximum",
   "villagerbargains.gearStrength.maximum.description": "Traded enchanted tools, weapons and armor always use the strongest enchanting power vanilla can roll. The price follows the Pricing setting. Chest loot is not affected.",
+  "villagerbargains.vanillaDemand.off.description": "Demand follows the Pricing setting: Minimum never raises prices, Maximum always charges the sold-out surcharge. This gives the best prices possible.",
+  "villagerbargains.vanillaDemand.on.description": "Demand stays vanilla in every Pricing mode: prices rise when a trade is bought a lot. Random price rolls still follow Pricing.",
+  "villagerbargains.vanillaWanderingTrader.off.description": "Wandering traders follow the Pricing setting, like villagers.",
+  "villagerbargains.vanillaWanderingTrader.on.description": "Wandering trader offers keep vanilla random prices and demand. Villagers still follow Pricing. Book levels and gear strength are not affected.",
   "modmenu.descriptionTranslation.villagerbargains": "Pins villager and wandering trader prices to the cheapest (or most expensive) value vanilla can produce: random prices of enchanted books and gear, and the demand surcharge. Optionally, traded enchanted books always get the lowest or highest level, and traded enchanted gear the weakest or strongest enchanting power. Which enchantments are offered, reputation discounts and Hero of the Village stay vanilla."
 }

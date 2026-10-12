@@ -22,11 +22,13 @@ import java.util.Locale;
  * {
  *   "pricing": "MINIMUM",     // MINIMUM, NORMAL or MAXIMUM
  *   "bookLevels": "NORMAL",   // MINIMUM, NORMAL or MAXIMUM
- *   "gearStrength": "NORMAL"  // MINIMUM, NORMAL or MAXIMUM
+ *   "gearStrength": "NORMAL", // MINIMUM, NORMAL or MAXIMUM
+ *   "vanillaDemand": false,   // true: vanilla demand surcharge in every pricing mode
+ *   "vanillaWanderingTrader": false // true: wandering trader offers keep vanilla prices
  * }
  * }</pre>
  *
- * <p>Each mode is held in a volatile field so the Mod Menu screen (render thread) and the
+ * <p>Each setting is held in a volatile field so the Mod Menu screen (render thread) and the
  * server thread that generates trades always see the same value.
  */
 public final class VillagerBargainsConfig {
@@ -36,6 +38,8 @@ public final class VillagerBargainsConfig {
     private static final String LEGACY_KEY_PRICING = "globalPriceMode";
     private static final String KEY_BOOK_LEVELS = "bookLevels";
     private static final String KEY_GEAR_STRENGTH = "gearStrength";
+    private static final String KEY_VANILLA_DEMAND = "vanillaDemand";
+    private static final String KEY_VANILLA_WANDERING_TRADER = "vanillaWanderingTrader";
     private static final PricingMode DEFAULT_MODE = PricingMode.MINIMUM;
     /** Vanilla by default: changing which book levels villagers sell is opt-in. */
     private static final PricingMode DEFAULT_BOOK_LEVEL_MODE = PricingMode.NORMAL;
@@ -46,6 +50,10 @@ public final class VillagerBargainsConfig {
     private static volatile PricingMode pricingMode = DEFAULT_MODE;
     private static volatile PricingMode bookLevelMode = DEFAULT_BOOK_LEVEL_MODE;
     private static volatile PricingMode gearStrengthMode = DEFAULT_GEAR_STRENGTH_MODE;
+    /** Off by default: the best prices possible are the default, so demand follows {@code pricing}. */
+    private static volatile boolean vanillaDemand = false;
+    /** Off by default, for the same reason: wandering traders are pinned like villagers. */
+    private static volatile boolean vanillaWanderingTrader = false;
 
     private VillagerBargainsConfig() {}
 
@@ -82,6 +90,28 @@ public final class VillagerBargainsConfig {
         save();
     }
 
+    /** Whether the demand surcharge stays vanilla whatever the pricing mode is. */
+    public static boolean vanillaDemand() {
+        return vanillaDemand;
+    }
+
+    /** Changes the vanilla demand setting and writes it to disk. */
+    public static void setVanillaDemand(boolean vanilla) {
+        vanillaDemand = vanilla;
+        save();
+    }
+
+    /** Whether wandering trader offers keep vanilla prices while villagers stay pinned. */
+    public static boolean vanillaWanderingTrader() {
+        return vanillaWanderingTrader;
+    }
+
+    /** Changes the vanilla wandering trader setting and writes it to disk. */
+    public static void setVanillaWanderingTrader(boolean vanilla) {
+        vanillaWanderingTrader = vanilla;
+        save();
+    }
+
     /** Loads the config file, creating it with defaults when missing or unreadable. */
     public static void load() {
         Path path = path();
@@ -92,11 +122,15 @@ public final class VillagerBargainsConfig {
                 pricingMode = parseMode(json, pricingKey, DEFAULT_MODE);
                 bookLevelMode = parseMode(json, KEY_BOOK_LEVELS, DEFAULT_BOOK_LEVEL_MODE);
                 gearStrengthMode = parseMode(json, KEY_GEAR_STRENGTH, DEFAULT_GEAR_STRENGTH_MODE);
+                vanillaDemand = parseFlag(json, KEY_VANILLA_DEMAND, false);
+                vanillaWanderingTrader = parseFlag(json, KEY_VANILLA_WANDERING_TRADER, false);
             } catch (IOException | JsonParseException | IllegalStateException e) {
                 VillagerBargains.LOGGER.warn("Could not read {}, using defaults: {}", path, e.getMessage());
                 pricingMode = DEFAULT_MODE;
                 bookLevelMode = DEFAULT_BOOK_LEVEL_MODE;
                 gearStrengthMode = DEFAULT_GEAR_STRENGTH_MODE;
+                vanillaDemand = false;
+                vanillaWanderingTrader = false;
             }
         }
         save(); // Normalises the file (adds missing keys, drops legacy ones).
@@ -121,11 +155,26 @@ public final class VillagerBargainsConfig {
         }
     }
 
+    /** Reads the true/false stored under {@code key}, or {@code fallback} when it is missing or not a boolean. */
+    static boolean parseFlag(JsonObject json, String key, boolean fallback) {
+        if (json == null || !json.has(key)) {
+            return fallback;
+        }
+        JsonElement element = json.get(key);
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isBoolean()) {
+            VillagerBargains.LOGGER.warn("'{}' must be true or false, got {}; using {}", key, element, fallback);
+            return fallback;
+        }
+        return element.getAsBoolean();
+    }
+
     private static void save() {
         JsonObject json = new JsonObject();
         json.addProperty(KEY_PRICING, pricingMode.name());
         json.addProperty(KEY_BOOK_LEVELS, bookLevelMode.name());
         json.addProperty(KEY_GEAR_STRENGTH, gearStrengthMode.name());
+        json.addProperty(KEY_VANILLA_DEMAND, vanillaDemand);
+        json.addProperty(KEY_VANILLA_WANDERING_TRADER, vanillaWanderingTrader);
         Path path = path();
         try {
             Files.createDirectories(path.getParent());
