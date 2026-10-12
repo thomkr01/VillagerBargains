@@ -6,12 +6,12 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.DemandPinnable;
 import com.villagerbargains.price.ThreadScope;
+import com.villagerbargains.price.TradeEntities;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.VillagerTrade;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -34,15 +34,7 @@ import org.spongepowered.asm.mixin.injection.At;
 public abstract class VillagerTradeMixin {
     @WrapMethod(method = "getOffer")
     private MerchantOffer villagerbargains$markVanillaTrader(LootContext context, Operation<MerchantOffer> original) {
-        Entity trader;
-        try {
-            trader = context.getOptional(LootContextParams.THIS_ENTITY);
-        } catch (NoSuchMethodError e) {
-            StringBuilder sb = new StringBuilder("PROBE ");
-            for (var m : LootContext.class.getDeclaredMethods()) sb.append(m).append(" ;; ");
-            for (var f : LootContext.class.getDeclaredFields()) sb.append("FIELD ").append(f).append(" ;; ");
-            throw new IllegalStateException(sb.toString());
-        }
+        Entity trader = TradeEntities.of(context);
         if (VillagerBargainsConfig.vanillaWanderingTrader() && trader != null
                 && trader.getType() == EntityTypes.WANDERING_TRADER) {
             return ThreadScope.VANILLA_TRADER.run(() -> original.call(context));
