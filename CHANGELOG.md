@@ -2,7 +2,7 @@
 
 Newest first. Each GitHub release lists only its own section; the full history lives here.
 
-## Unreleased
+## 2.5.0
 
 * `/bargain refresh` applies the current demand rule to the trades every loaded villager and wandering trader already has, right away instead of at the next restock. The trades themselves, their items and rolled prices stay as they are. `/bargain refresh villagers`, `/bargain refresh traders` and `/bargain refresh <uuid>` limit it to villagers, wandering traders or one entity. Permission node `villagerbargains.command.refresh` (operator by default).
 
