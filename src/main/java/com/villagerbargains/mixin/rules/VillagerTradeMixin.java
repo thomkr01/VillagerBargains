@@ -3,12 +3,10 @@ package com.villagerbargains.mixin.rules;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.villagerbargains.config.VillagerBargainsConfig;
 import com.villagerbargains.price.DemandPinnable;
 import com.villagerbargains.price.ThreadScope;
 import com.villagerbargains.price.TradeEntities;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import com.villagerbargains.price.TradePricing;
 import net.minecraft.world.item.trading.MerchantOffer;
 import net.minecraft.world.item.trading.VillagerTrade;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -34,12 +32,7 @@ import org.spongepowered.asm.mixin.injection.At;
 public abstract class VillagerTradeMixin {
     @WrapMethod(method = "getOffer")
     private MerchantOffer villagerbargains$markVanillaTrader(LootContext context, Operation<MerchantOffer> original) {
-        Entity trader = TradeEntities.of(context);
-        if (VillagerBargainsConfig.vanillaWanderingTrader() && trader != null
-                && trader.getType() == EntityTypes.WANDERING_TRADER) {
-            return ThreadScope.VANILLA_TRADER.run(() -> original.call(context));
-        }
-        return original.call(context);
+        return TradePricing.forTrader(TradeEntities.of(context), () -> original.call(context));
     }
 
     @ModifyReturnValue(method = "getOffer", at = @At("RETURN"))
