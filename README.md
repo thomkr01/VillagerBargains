@@ -30,6 +30,7 @@ Bargains → Pricing), with [`/bargain price`](#commands), or in `config/village
 The mode applies to trades a villager unlocks **after** the change. Offers a villager
 already has are saved in the world and keep their rolled price, just like in vanilla; only
 their demand part follows the new mode, from the villager's next restock on.
+[`/bargain refresh`](#commands) applies the demand part right away instead.
 
 ## Book levels
 
@@ -127,7 +128,7 @@ apply to trades unlocked after the change, and `vanillaDemand` reaches existing 
 `/bargain` changes the settings without restarting the server. Every change is saved to
 `config/villagerbargains.json` immediately. Like a change in Mod Menu, it applies to trades
 villagers unlock from then on: existing offers keep their price and level, and their demand
-follows the new pricing mode from the next restock.
+follows the new pricing mode from the next restock, or right away with `/bargain refresh`.
 
 | Command | Permission node | What it does |
 |---------|-----------------|--------------|
@@ -138,6 +139,7 @@ follows the new pricing mode from the next restock.
 | `/bargain gear` / `/bargain gear <minimum\|normal\|maximum>` | `villagerbargains.command.gear` | Shows / sets `gearStrength`. |
 | `/bargain demand` / `/bargain demand <vanilla\|pinned>` | `villagerbargains.command.demand` | Shows / sets `vanillaDemand` (`vanilla` is true). |
 | `/bargain trader` / `/bargain trader <vanilla\|pinned>` | `villagerbargains.command.trader` | Shows / sets `vanillaWanderingTrader` (`vanilla` is true). |
+| `/bargain refresh` / `/bargain refresh <villagers\|traders\|uuid>` | `villagerbargains.command.refresh` | Applies the current demand rule (`pricing`, `vanillaDemand`, `vanillaWanderingTrader`) to the existing offers of every loaded villager and wandering trader, only the villagers, only the wandering traders, or the one entity with that UUID, without waiting for a restock. The trades themselves stay: their items, book levels and rolled prices were fixed when they were made. |
 
 Arguments tab-complete. Changes are announced to other operators, like vanilla admin
 commands. The commands also work in single player with cheats enabled.
@@ -318,6 +320,7 @@ src/main/java/com/villagerbargains/
 ├── price/TradePricing.java        the pricing and demand mode in force for the trade being made
 ├── price/DemandPinnable.java      lets VillagerTradeMixin pin a new offer's demand
 ├── price/BookLevels.java          traded enchanted books: vanilla level roll → configured level
+├── price/TradeRefresh.java        pins the demand of a trader's existing offers (/bargain refresh)
 └── mixin/
     ├── VillagerBargainsMixinPlugin    skips hooks whose vanilla class is not in this version
     ├── EnchantRandomlyFunctionMixin   enchanted book price roll and level roll
@@ -370,7 +373,8 @@ src/gametest/java/…/gametest/      in-game tests: real trade offers in every m
     `vanillaWanderingTrader` a wandering trader's prices and demand are vanilla while a villager's
     stay pinned.
   * **Commands:** `/bargain` subcommands set every option, each one only its own (`price`,
-    `books` and `gear` never change each other), and `reload` re-reads the file.
+    `books` and `gear` never change each other), `reload` re-reads the file, and `refresh`
+    pins the demand of existing offers while keeping the same trades.
   * **Permissions:** an operator can use every command; a player without operator can neither
     see nor run any of them, and no setting changes. In `./gradlew build` the game tests also
     run with the permissions API LuckPerms uses: each node is granted or denied on its own,

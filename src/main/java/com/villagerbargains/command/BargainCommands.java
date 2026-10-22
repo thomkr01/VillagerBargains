@@ -4,24 +4,34 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.villagerbargains.config.PricingMode;
 import com.villagerbargains.config.VillagerBargainsConfig;
+import com.villagerbargains.price.TradeRefresh;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.Permission;
 import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.entity.npc.villager.Villager;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * The {@code /bargain} command: shows, sets and reloads every config option without a restart.
+ * The {@code /bargain} command: shows, sets and reloads every config option without a restart,
+ * and applies the current demand rule to existing trades.
  *
  * <p>Each subcommand has its own permission node ({@code villagerbargains.command.<name>}).
  * With a permissions mod such as LuckPerms (through fabric-permissions-api, which LuckPerms
@@ -30,7 +40,7 @@ import java.util.function.Supplier;
 public final class BargainCommands {
     public static final String PERMISSION_PREFIX = "villagerbargains.command.";
     /** Every subcommand, which is also the last part of its permission node. */
-    static final List<String> NODES = List.of("reload", "price", "books", "gear", "demand", "trader");
+    static final List<String> NODES = List.of("reload", "price", "books", "gear", "demand", "trader", "refresh");
     /** Operators, the same level as {@code /gamerule}. */
     private static final PermissionLevel DEFAULT_LEVEL = PermissionLevel.byId(2);
     private static final boolean PERMISSIONS_API = FabricLoader.getInstance().isModLoaded("fabric-permissions-api-v0");
@@ -55,7 +65,37 @@ public final class BargainCommands {
                 .then(modeSetting("books", "bookLevels", VillagerBargainsConfig::bookLevelMode, VillagerBargainsConfig::setBookLevelMode))
                 .then(modeSetting("gear", "gearStrength", VillagerBargainsConfig::gearStrengthMode, VillagerBargainsConfig::setGearStrengthMode))
                 .then(flagSetting("demand", "vanillaDemand", VillagerBargainsConfig::vanillaDemand, VillagerBargainsConfig::setVanillaDemand))
-                .then(flagSetting("trader", "vanillaWanderingTrader", VillagerBargainsConfig::vanillaWanderingTrader, VillagerBargainsConfig::setVanillaWanderingTrader)));
+                .then(flagSetting("trader", "vanillaWanderingTrader", VillagerBargainsConfig::vanillaWanderingTrader, VillagerBargainsConfig::setVanillaWanderingTrader))
+                .then(Commands.literal("refresh")
+                        .requires(source -> allowed(source, "refresh"))
+                        .executes(context -> refresh(context.getSource(), entity -> true))
+                        .then(Commands.literal("villagers").executes(context -> refresh(context.getSource(), entity -> entity instanceof Villager)))
+                        .then(Commands.literal("traders").executes(context -> refresh(context.getSource(),
+                                entity -> entity.getType() == EntityTypes.WANDERING_TRADER)))
+                        .then(Commands.argument("uuid", UuidArgument.uuid()).executes(context -> {
+                            UUID uuid = UuidArgument.getUuid(context, "uuid");
+                            return refresh(context.getSource(), entity -> entity.getUUID().equals(uuid));
+                        }))));
+    }
+
+    /**
+     * {@code /bargain refresh [villagers|traders|<uuid>]}: applies the current demand rule to the
+     * existing offers of the loaded villagers and wandering traders that match {@code filter}.
+     */
+    private static int refresh(CommandSourceStack source, Predicate<Entity> filter) {
+        int refreshed = 0;
+        for (ServerLevel level : source.getServer().getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof AbstractVillager trader && filter.test(entity)) {
+                    TradeRefresh.refresh(trader);
+                    refreshed++;
+                }
+            }
+        }
+        int count = refreshed;
+        source.sendSuccess(() -> Component.literal("Villager Bargains: applied the current demand rule to the trades of "
+                + count + " villagers and wandering traders"), true);
+        return refreshed;
     }
 
     private static String summary() {
