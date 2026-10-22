@@ -2,6 +2,10 @@
 
 Newest first. Each GitHub release lists only its own section; the full history lives here.
 
+## Unreleased
+
+* `/bargain refresh` applies the current demand rule to the trades every loaded villager and wandering trader already has, right away instead of at the next restock. The trades themselves, their items and rolled prices stay as they are. `/bargain refresh villagers`, `/bargain refresh traders` and `/bargain refresh <uuid>` limit it to villagers, wandering traders or one entity. Permission node `villagerbargains.command.refresh` (operator by default).
+
 ## 2.4.0
 
 * New optional `vanillaDemand` setting (off by default): the demand surcharge stays vanilla in every `pricing` mode, while random price rolls still follow `pricing`.

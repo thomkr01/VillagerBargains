@@ -9,8 +9,15 @@ import com.villagerbargains.config.VillagerBargainsConfig;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.permissions.PermissionSet;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.minecraft.world.item.trading.MerchantOffer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,13 +25,14 @@ import java.util.List;
 
 /**
  * Runs {@code /bargain} and checks that every subcommand changes only its own option, that
- * {@code reload} re-reads the file, and who may use the commands: operators yes, players without
+ * {@code reload} re-reads the file, that {@code refresh} applies the demand rule to existing trades
+ * without changing them, and who may use the commands: operators yes, players without
  * operator no, and with a permissions mod (see {@link FakeLuckPerms}) each node decides on its own.
  * Each test restores the config before it returns (all within one tick), so trade tests running
  * alongside never see the changes.
  */
 public final class BargainCommandsGameTest {
-    private static final List<String> SUBCOMMANDS = List.of("reload", "price", "books", "gear", "demand", "trader");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "price", "books", "gear", "demand", "trader", "refresh");
     /** Every command form; none of them may run for a player without operator. */
     private static final List<String> EVERY_COMMAND = List.of(
             "bargain", "bargain reload",
@@ -32,7 +40,9 @@ public final class BargainCommandsGameTest {
             "bargain books", "bargain books minimum", "bargain books normal", "bargain books maximum",
             "bargain gear", "bargain gear minimum", "bargain gear normal", "bargain gear maximum",
             "bargain demand", "bargain demand vanilla", "bargain demand pinned",
-            "bargain trader", "bargain trader vanilla", "bargain trader pinned");
+            "bargain trader", "bargain trader vanilla", "bargain trader pinned",
+            "bargain refresh", "bargain refresh villagers", "bargain refresh traders",
+            "bargain refresh 00000000-0000-0000-0000-000000000000");
 
     @GameTest
     public void everySettingCanBeChanged(GameTestHelper helper) {
@@ -72,6 +82,68 @@ public final class BargainCommandsGameTest {
             helper.assertTrue(!VillagerBargainsConfig.vanillaWanderingTrader(), "vanillaWanderingTrader after /bargain trader pinned");
         });
         helper.succeed();
+    }
+
+    /**
+     * Offers made under MINIMUM have no demand. After switching to MAXIMUM, {@code refresh} must
+     * pin their demand to MAXIMUM while keeping the very same trades, and leave a wandering trader
+     * set to vanilla alone.
+     */
+    @GameTest
+    public void refreshKeepsTradesAndPinsTheirDemand(GameTestHelper helper) {
+        withConfigRestored(() -> {
+            run(helper, "bargain demand pinned");
+            run(helper, "bargain trader pinned");
+            run(helper, "bargain price minimum");
+            Villager farmer = TradeTestSupport.spawnTrader(helper);
+            farmer.setVillagerData(farmer.getVillagerData().withLevel(3).withProfession(helper.getLevel().registryAccess()
+                    .lookupOrThrow(Registries.VILLAGER_PROFESSION).getOrThrow(VillagerProfession.FARMER)));
+            AbstractVillager trader = helper.spawn(EntityTypes.WANDERING_TRADER, new BlockPos(2, 1, 1));
+            List<MerchantOffer> farmerOffers = List.copyOf(farmer.getOffers());
+            List<MerchantOffer> traderOffers = List.copyOf(trader.getOffers());
+            assertDemand(helper, farmer, false, "farmer before refresh");
+            assertDemand(helper, trader, false, "wandering trader before refresh");
+
+            run(helper, "bargain price maximum");
+            run(helper, "bargain trader vanilla");
+            run(helper, "bargain refresh");
+            assertSameOffers(helper, farmer, farmerOffers);
+            assertSameOffers(helper, trader, traderOffers);
+            assertDemand(helper, farmer, true, "farmer after refresh");
+            assertDemand(helper, trader, false, "wandering trader set to vanilla after refresh");
+
+            run(helper, "bargain trader pinned");
+            run(helper, "bargain price minimum");
+            run(helper, "bargain refresh traders");
+            assertDemand(helper, farmer, true, "farmer after /bargain refresh traders");
+            assertDemand(helper, trader, false, "wandering trader after /bargain refresh traders");
+            run(helper, "bargain price maximum");
+            run(helper, "bargain refresh " + trader.getUUID());
+            assertDemand(helper, trader, true, "wandering trader after /bargain refresh <its uuid>");
+            run(helper, "bargain price minimum");
+            run(helper, "bargain refresh villagers");
+            assertDemand(helper, farmer, false, "farmer after /bargain refresh villagers");
+            assertDemand(helper, trader, true, "wandering trader after /bargain refresh villagers");
+            assertSameOffers(helper, farmer, farmerOffers);
+            assertSameOffers(helper, trader, traderOffers);
+        });
+        helper.succeed();
+    }
+
+    /** {@code trader} still has exactly the offers it had (same objects, so same items and prices). */
+    private static void assertSameOffers(GameTestHelper helper, AbstractVillager trader, List<MerchantOffer> before) {
+        helper.assertValueEqual(trader.getOffers().size(), before.size(), "number of offers after refresh");
+        for (int i = 0; i < before.size(); i++) {
+            helper.assertTrue(trader.getOffers().get(i) == before.get(i), "offer " + i + " kept after refresh");
+        }
+    }
+
+    /** Every offer of {@code trader} has the MAXIMUM demand pin (its max uses) or the MINIMUM one (0). */
+    private static void assertDemand(GameTestHelper helper, AbstractVillager trader, boolean maximum, String when) {
+        helper.assertTrue(!trader.getOffers().isEmpty(), "offers " + when);
+        for (MerchantOffer offer : trader.getOffers()) {
+            helper.assertValueEqual(offer.getDemand(), maximum ? offer.getMaxUses() : 0, "demand " + when);
+        }
     }
 
     @GameTest
