@@ -63,10 +63,8 @@ jobs:
             Villager Bargains ${{ steps.version.outputs.version }} for **Minecraft 26.2 and 26.3** (one jar for both).
             Requires Fabric Loader 0.19.5+ and Java 25. Fabric API is not required; Mod Menu and LuckPerms are optional.
 
-            **What's new in 2.4.0**
-            * New optional `vanillaDemand` setting (off by default): the demand surcharge stays vanilla in every `pricing` mode, while random price rolls still follow `pricing`.
-            * New optional `vanillaWanderingTrader` setting (off by default): wandering trader offers keep vanilla prices and demand, while villagers still follow `pricing`. `bookLevels` and `gearStrength` still apply to its gear.
-            * Both have a button in Mod Menu → Villager Bargains, and a command: `/bargain demand <vanilla|pinned>` and `/bargain trader <vanilla|pinned>`, with permission nodes `villagerbargains.command.demand` and `villagerbargains.command.trader` (operator by default).
+            **What's new in 2.5.0**
+            * `/bargain refresh` applies the current demand rule to the trades every loaded villager and wandering trader already has, right away instead of at the next restock. The trades themselves, their items and rolled prices stay as they are. `/bargain refresh villagers`, `/bargain refresh traders` and `/bargain refresh <uuid>` limit it to villagers, wandering traders or one entity. Permission node `villagerbargains.command.refresh` (operator by default).
 
             Full history: [CHANGELOG.md](https://github.com/thomkr01/VillagerBargains/blob/main/CHANGELOG.md)
           files: build/libs/villagerbargains-${{ steps.version.outputs.version }}.jar
