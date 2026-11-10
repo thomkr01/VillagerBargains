@@ -1,15 +1,10 @@
-# Builds a code-only knowledge graph with Graphify and uploads it as an artifact.
-# Local only: tree-sitter parsing, no LLM, no API key.
+# Code-only graph: tree-sitter parsing, no LLM, no API key.
 name: Graphify
 
 on:
   pull_request:
     paths-ignore: [ '**.md' ]
   workflow_dispatch:
-
-concurrency:
-  group: graphify-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   graph:
