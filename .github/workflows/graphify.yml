@@ -1,0 +1,31 @@
+# Builds a code-only knowledge graph with Graphify and uploads it as an artifact.
+# Local only: tree-sitter parsing, no LLM, no API key.
+name: Graphify
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ '**.md' ]
+  workflow_dispatch:
+
+concurrency:
+  group: graphify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  graph:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: pipx install graphifyy
+      - run: graphify update .
+        env:
+          GRAPHIFY_BACKEND: none
+      - uses: actions/upload-artifact@v7
+        with:
+          name: graphify-out
+          path: |
+            graphify-out/graph.html
+            graphify-out/GRAPH_REPORT.md
+            graphify-out/graph.json
+          retention-days: 14

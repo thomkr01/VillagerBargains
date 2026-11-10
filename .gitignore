@@ -34,3 +34,6 @@ local.properties
 
 # Claude Code agent worktrees (temporary)
 .claude/worktrees/
+
+# Graphify
+graphify-out/
